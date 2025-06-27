@@ -8,7 +8,7 @@ function hien_thi_user() {
 
 function them_user() {
     echo "=============================================================="
-    echo "Co the nhap nhieu user, moi ten mot dong. Nhan Enter 2 lan de ket thuc."
+    echo "Co the nhap nhieu user, moi user 1 dong. Nhan Enter 2 lan de ket thuc."
     usernames=""
     while true; do
         read line
@@ -56,7 +56,7 @@ function xoa_user() {
             deluser --remove-home "$USER_CAN_XOA"
             echo "Da xoa user $USER_CAN_XOA."
         else
-            echo "Da huy xoa."
+            echo "Da huy lenh xoa."
         fi
     else
         echo "So thu tu khong hop le."
