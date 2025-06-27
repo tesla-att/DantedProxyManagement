@@ -3,7 +3,16 @@
 
 function hien_thi_user() {
     echo "Danh sach user:"
-    awk -F: '($3 < 1000 && $7 == "/bin/false") {print $1}' /etc/passwd
+    mapfile -t USERS < <(awk -F: '($3 < 1000 && $7 == "/bin/false") {print $1}' /etc/passwd)
+    
+    if [ ${#USERS[@]} -eq 0 ]; then
+        echo "Khong tim thay user nao!"
+        return
+    fi
+    
+    for i in "${!USERS[@]}"; do
+        printf "%2d. %s\n" $((i+1)) "${USERS[$i]}"
+    done
 }
 
 function them_user() {
