@@ -1,94 +1,181 @@
 #!/bin/bash
-# User management & proxy test script
+# User and Proxy Management Script (English)
 
-function hien_thi_user() {
-    echo "Danh sach user:"
+function show_users() {
+    echo "User list:"
     mapfile -t USERS < <(awk -F: '($3 < 1000 && $7 == "/bin/false") {print $1}' /etc/passwd)
-    
     if [ ${#USERS[@]} -eq 0 ]; then
-        echo "Khong tim thay user nao!"
+        echo "No users found!"
         return
     fi
-    
     for i in "${!USERS[@]}"; do
         printf "%2d. %s\n" $((i+1)) "${USERS[$i]}"
     done
 }
 
-function them_user() {
+function add_single_user() {
     echo "=============================================================="
-    echo "Co the nhap nhieu user, moi user 1 dong. Nhan Enter 2 lan de ket thuc."
-    usernames=""
+    read -p "Enter username: " username
+    username=$(echo "$username" | tr -d ' ')
+    if [ -z "$username" ]; then
+        echo "Username cannot be empty!"
+        return
+    fi
+    if id "$username" &>/dev/null; then
+        echo "User $username already exists!"
+        return
+    fi
+    useradd -r -s /bin/false "$username"
+    if [ $? -ne 0 ]; then
+        echo "Error creating user $username."
+        return
+    fi
+    echo "User $username created."
+    # --- Thay đổi: đặt password luôn, không hỏi ---
     while true; do
-        read line
-        if [ -z "$line" ]; then
-            break
-        fi
-        usernames="$usernames $line"
-    done
-
-    for username in $usernames; do
-        if [ -z "$username" ]; then
-            continue
-        fi
-        if id "$username" &>/dev/null; then
-            echo "User $username da ton tai! Bo qua."
+        read -s -p "Enter password for $username: " password
+        echo
+        read -s -p "Re-enter password for $username: " password2
+        echo
+        if [ "$password" != "$password2" ]; then
+            echo "Passwords do not match. Try again."
+        elif [ -z "$password" ]; then
+            echo "Password cannot be empty. Try again."
         else
-            useradd -r -s /bin/false "$username"
+            echo "$username:$password" | chpasswd
             if [ $? -eq 0 ]; then
-                echo "Da tao user $username."
+                echo "Password set for user $username."
             else
-                echo "Loi khi tao user $username."
+                echo "Error setting password for user $username."
             fi
+            break
         fi
     done
 }
 
-function xoa_user() {
-    mapfile -t DANH_SACH_USER < <(awk -F: '($3 < 1000 && $7 == "/bin/false") {print $1}' /etc/passwd)
-
-    if [ ${#DANH_SACH_USER[@]} -eq 0 ]; then
-        echo "Khong tim thay user nao!"
+function add_batch_users() {
+    echo "=============================================================="
+    echo "You can enter multiple usernames, one per line. Press Enter twice to finish."
+    usernames=()
+    while true; do
+        read line
+        line=$(echo "$line" | tr -d ' ')
+        if [ -z "$line" ]; then
+            break
+        fi
+        usernames+=("$line")
+    done
+    if [ ${#usernames[@]} -eq 0 ]; then
+        echo "No users entered!"
         return
     fi
-
-    echo "Danh sach user:"
-    for i in "${!DANH_SACH_USER[@]}"; do
-        printf "%2d. %s\n" $((i+1)) "${DANH_SACH_USER[$i]}"
-    done
-    read -p "Nhap so thu tu user ban muon xoa: " num
-
-    if [[ "$num" =~ ^[0-9]+$ ]] && (( num >= 1 && num <= ${#DANH_SACH_USER[@]} )); then
-        USER_CAN_XOA="${DANH_SACH_USER[$((num-1))]}"
-        read -p "Ban co chac muon xoa user '$USER_CAN_XOA'? (y/n): " confirm
-        if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-            deluser --remove-home "$USER_CAN_XOA"
-            echo "Da xoa user $USER_CAN_XOA."
+    # --- Thay đổi: nhập pass từng user ---
+    passwords=()
+    for username in "${usernames[@]}"; do
+        if [ -z "$username" ]; then
+            passwords+=("")
+            continue
+        fi
+        if id "$username" &>/dev/null; then
+            echo "User $username already exists! Skipping."
+            passwords+=("")
         else
-            echo "Da huy lenh xoa."
+            while true; do
+                read -s -p "Enter password for $username: " password
+                echo
+                read -s -p "Re-enter password for $username: " password2
+                echo
+                if [ "$password" != "$password2" ]; then
+                    echo "Passwords do not match. Try again."
+                elif [ -z "$password" ]; then
+                    echo "Password cannot be empty. Try again."
+                else
+                    passwords+=("$password")
+                    break
+                fi
+            done
+        fi
+    done
+    # --- Tạo user & set pass ---
+    for idx in "${!usernames[@]}"; do
+        username="${usernames[$idx]}"
+        password="${passwords[$idx]}"
+        if [ -z "$username" ] || id "$username" &>/dev/null; then
+            continue
+        fi
+        useradd -r -s /bin/false "$username"
+        if [ $? -eq 0 ]; then
+            echo "User $username created."
+            if [ -n "$password" ]; then
+                echo "$username:$password" | chpasswd
+                if [ $? -eq 0 ]; then
+                    echo "Password set for user $username."
+                else
+                    echo "Error setting password for user $username."
+                fi
+            fi
+        else
+            echo "Error creating user $username."
+        fi
+    done
+}
+
+function add_user() {
+    echo "=============================================================="
+    echo "Choose user adding method:"
+    echo "1. Add a single user and set password"
+    echo "2. Add users in batch"
+    read -p "Your choice [1-2]: " option
+    option=$(echo "$option" | tr -d ' ')
+    case $option in
+        1) add_single_user ;;
+        2) add_batch_users ;;
+        *) echo "Invalid choice!" ;;
+    esac
+}
+
+function delete_user() {
+    mapfile -t USER_LIST < <(awk -F: '($3 < 1000 && $7 == "/bin/false") {print $1}' /etc/passwd)
+    if [ ${#USER_LIST[@]} -eq 0 ]; then
+        echo "No users found!"
+        return
+    fi
+    echo "User list:"
+    for i in "${!USER_LIST[@]}"; do
+        printf "%2d. %s\n" $((i+1)) "${USER_LIST[$i]}"
+    done
+    read -p "Enter the number of the user you want to delete: " num
+    num=$(echo "$num" | tr -d ' ')
+    if [[ "$num" =~ ^[0-9]+$ ]] && (( num >= 1 && num <= ${#USER_LIST[@]} )); then
+        USER_TO_DELETE="${USER_LIST[$((num-1))]}"
+        read -p "Are you sure you want to delete user '$USER_TO_DELETE'? (y/n): " confirm
+        confirm=$(echo "$confirm" | tr -d ' ')
+        if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+            deluser --remove-home "$USER_TO_DELETE" 2>/dev/null || userdel --remove "$USER_TO_DELETE"
+            echo "User $USER_TO_DELETE deleted."
+        else
+            echo "Delete cancelled."
         fi
     else
-        echo "So thu tu khong hop le."
+        echo "Invalid number."
     fi
 }
 
 function test_proxy() {
-    echo "Paste danh sach proxy (1 proxy 1 dong, nhan Enter 2 lan de ket thuc):"
+    echo "Paste the proxy list (one proxy per line, press Enter twice to finish):"
     proxies=()
     while IFS= read -r line; do
         [[ -z "$line" ]] && break
-        proxies+=("$(echo "$line" | xargs)")
+        line=$(echo "$line" | tr -d ' ')
+        proxies+=("$line")
     done
-
     for proxy in "${proxies[@]}"; do
         IFS=':' read -r ip port user pass <<< "$proxy"
-
         if [ -z "$user" ]; then
             curl_proxy="socks5://$ip:$port"
         else
             curl_proxy="socks5://$user:$pass@$ip:$port"
         fi
-
         result=$(curl -s --max-time 10 -x "$curl_proxy" https://api.ip.sb/ip)
         if [ $? -eq 0 ] && [[ $result != "" ]]; then
             echo "[SUCCESS] $proxy"
@@ -96,24 +183,209 @@ function test_proxy() {
             echo "[FAIL] $proxy"
         fi
     done
+}
+
+install_dante() {
+    echo "=============================================================="
+    echo "Installing Dante SOCKS proxy server..."
+    if [ "$(id -u)" != "0" ]; then
+        echo "You need root privileges to install Dante server!"
+        return
+    fi
+
+    # Hàm lấy IP công khai
+    get_public_ip() {
+        ip=$(curl -s https://api.ipify.org)
+        if [[ -z "$ip" ]]; then
+            ip=$(curl -s https://ifconfig.me)
+        fi
+        if [[ -z "$ip" ]]; then
+            ip=$(curl -s https://icanhazip.com)
+        fi
+        echo "$ip"
     }
+
+    # Xác định hệ điều hành
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+    else
+        echo "Cannot determine operating system!"
+        return
+    fi
+
+    # Cài đặt dante-server
+    case $OS in
+        ubuntu|debian)
+            apt-get update
+            apt-get install -y dante-server
+            ;;
+        centos|rhel|fedora)
+            yum install -y epel-release
+            yum install -y dante-server
+            ;;
+        *)
+            echo "Operating system not supported!"
+            return
+            ;;
+    esac
+    if [ $? -ne 0 ]; then
+        echo "Failed to install Dante server!"
+        return
+    fi
+
+    read -p "Enter port for Dante SOCKS server [1080]: " port
+    port=$(echo "$port" | tr -d ' ')
+    if [ -z "$port" ]; then
+        port=1080
+    fi
+
+    # Hiển thị các interface mạng
+    all_intf=($(ip -o link show | awk -F': ' '{print $2}'))
+    declare -A ip_map
+    while IFS= read -r line; do
+        intf=$(echo "$line" | awk '{print $2}')
+        ipaddr=$(echo "$line" | awk '{print $4}')
+        ip_map["$intf"]="$ipaddr"
+    done < <(ip -o -4 addr show)
+    echo "Network interfaces:"
+    for i in "${!all_intf[@]}"; do
+        ip="${ip_map[${all_intf[$i]}]}"
+        if [ -z "$ip" ]; then ip="No IP"; fi
+        echo "$((i+1)). ${all_intf[$i]} - IP: $ip"
+    done
+    read -p "Choose the interface number to use for Dante (e.g. 2): " if_num
+    if_num=$(echo "$if_num" | tr -d ' ')
+    if ! [[ "$if_num" =~ ^[0-9]+$ ]] || ((if_num < 1 || if_num > ${#all_intf[@]})); then
+        echo "Invalid choice! Defaulting to eth0."
+        interface="eth0"
+    else
+        interface="${all_intf[$((if_num-1))]}"
+    fi
+
+    read -p "Do you want to require user authentication? (y/n): " auth_required
+    auth_required=$(echo "$auth_required" | tr -d ' ')
+
+    # Tạo file cấu hình Dante
+    cat > /etc/danted.conf << EOF
+logoutput: syslog
+user.privileged: root
+user.unprivileged: nobody
+
+internal: 0.0.0.0 port=$port
+external: $interface
+
+method: $(if [[ "$auth_required" == "y" || "$auth_required" == "Y" ]]; then echo "username"; else echo "none"; fi)
+
+client pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    log: connect disconnect error
+}
+
+pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    protocol: tcp udp
+    log: connect disconnect error
+}
+EOF
+
+    # Khởi động dịch vụ và hiển thị trạng thái
+    if [ -f /bin/systemctl ] || [ -f /usr/bin/systemctl ]; then
+        systemctl enable danted
+        systemctl restart danted
+        dante_status=$(systemctl is-active danted)
+        echo "Dante service status: $dante_status"
+        if [ "$dante_status" = "active" ]; then
+            status=0
+        else
+            status=1
+        fi
+    else
+        service danted restart
+        dante_status=$(service danted status | grep -E 'Active|running')
+        echo "Dante service status: $dante_status"
+        if [[ "$dante_status" == *"running"* ]]; then
+            status=0
+        else
+            status=1
+        fi
+    fi
+
+    # Thông báo kết quả
+    if [ $status -eq 0 ]; then
+        echo "Dante SOCKS server has been installed and is running on port $port"
+        echo "Configuration: /etc/danted.conf"
+        echo -n "Server IP: "
+        get_public_ip
+        if [[ "$auth_required" == "y" || "$auth_required" == "Y" ]]; then
+            echo "You chose user authentication."
+            echo "Use the 'Add user' function to create users for the proxy."
+        else
+            echo "You chose no authentication."
+            echo "Proxy can be used immediately: $(get_public_ip):$port"
+        fi
+    else
+        echo "Failed to start Dante server!"
+    fi
+}
+
+function uninstall_dante() {
+    echo "Uninstalling Dante SOCKS proxy server completely..."
+    if [ "$(id -u)" != "0" ]; then
+        echo "You need root privileges to uninstall Dante server!"
+        return
+    fi
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+    else
+        echo "Cannot determine operating system!"
+        return
+    fi
+    case $OS in
+        ubuntu|debian)
+            apt-get remove --purge -y dante-server
+            apt-get autoremove -y
+            ;;
+        centos|rhel|fedora)
+            yum remove -y dante-server
+            ;;
+        *)
+            echo "Operating system not supported!"
+            return
+            ;;
+    esac
+    rm -f /etc/danted.conf
+    rm -f /var/log/danted.log
+    if [ -f /bin/systemctl ] || [ -f /usr/bin/systemctl ]; then
+        systemctl disable danted
+        systemctl stop danted
+    else
+        service danted stop
+    fi
+    echo "Dante SOCKS proxy server has been completely uninstalled!"
+}
 
 while true; do
     echo ""
     echo "============ User & Proxy Manager ============"
-    echo "1. Hien thi danh sach user"
-    echo "2. Them user moi"
-    echo "3. Xoa user"
-    echo "4. Test hang loat proxy"
-    echo "5. Thoat"
-    read -p "Chon chuc nang [1-5]: " choice
-
+    echo "1. Install Dante SOCKS proxy server"
+    echo "2. Show user list"
+    echo "3. Add user"
+    echo "4. Delete user"
+    echo "5. Batch test proxies"
+    echo "6. Uninstall Dante SOCKS proxy server completely"
+    echo "7. Exit"
+    read -p "Choose a function [1-7]: " choice
+    choice=$(echo "$choice" | tr -d ' ')
     case $choice in
-        1) hien_thi_user ;;
-        2) them_user ;;
-        3) xoa_user ;;
-        4) test_proxy ;;
-        5) exit 0 ;;
-        *) echo "Lua chon khong hop le!" ;;
+        1) install_dante ;;
+        2) show_users ;;
+        3) add_user ;;
+        4) delete_user ;;
+        5) test_proxy ;;
+        6) uninstall_dante ;;
+        7) exit 0 ;;
+        *) echo "Invalid choice!" ;;
     esac
 done
