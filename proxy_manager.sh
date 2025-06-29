@@ -53,7 +53,7 @@ function add_single_user() {
     done
 }
 
-function add_batch_users() {
+function add_multi_users() {
     echo "=============================================================="
     echo "You can enter multiple usernames, one per line. Press Enter twice to finish."
     usernames=()
@@ -109,13 +109,13 @@ function add_batch_users() {
 function add_user() {
     echo "=============================================================="
     echo "Choose user adding method:"
-    echo "1. Add a single user and set password"
-    echo "2. Add users in batch"
+    echo "1. Add a Single-User"
+    echo "2. Add Multi-Users"
     read -p "Your choice [1-2]: " option
     option=$(echo "$option" | tr -d ' ')
     case $option in
         1) add_single_user ;;
-        2) add_batch_users ;;
+        2) add_multi_users ;;
         *) echo "Invalid choice!" ;;
     esac
 }
