@@ -72,7 +72,7 @@ function add_batch_users() {
 
 #    read -p "Do you want to set the same password for all new users? (y/n): " set_pass_all
 #    set_pass_all=$(echo "$set_pass_all" | tr -d ' ')
-#    if [[ "$set_pass_all" == "y" || "$set_pass_all" == "Y" ]]; then
+    if [[ "$set_pass_all" == "y" || "$set_pass_all" == "Y" ]]; then
 
         while true; do
             read -s -p "Enter the common password for all users: " password
