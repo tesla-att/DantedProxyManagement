@@ -121,30 +121,56 @@ function add_user() {
 }
 
 function delete_user() {
-    mapfile -t USER_LIST < <(awk -F: '($3 < 1000 && $7 == "/bin/false") {print $1}' /etc/passwd)
-    if [ ${#USER_LIST[@]} -eq 0 ]; then
-        echo "No users found!"
-        return
-    fi
-    echo "User list:"
-    for i in "${!USER_LIST[@]}"; do
-        printf "%2d. %s\n" $((i+1)) "${USER_LIST[$i]}"
-    done
-    read -p "Enter the number of the user you want to delete: " num
-    num=$(echo "$num" | tr -d ' ')
-    if [[ "$num" =~ ^[0-9]+$ ]] && (( num >= 1 && num <= ${#USER_LIST[@]} )); then
-        USER_TO_DELETE="${USER_LIST[$((num-1))]}"
-        read -p "Are you sure you want to delete user '$USER_TO_DELETE'? (y/n): " confirm
-        confirm=$(echo "$confirm" | tr -d ' ')
-        if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-            deluser --remove-home "$USER_TO_DELETE" 2>/dev/null || userdel --remove "$USER_TO_DELETE"
-            echo "User $USER_TO_DELETE deleted."
-        else
-            echo "Delete cancelled."
+    while true; do
+        # Get all system users except system accounts
+        user_list=($(awk -F: '{ if ($3 >= 1000 && $1 != "nobody") print $1 }' /etc/passwd))
+        if [ ${#user_list[@]} -eq 0 ]; then
+            echo "No users to delete!"
+            return
         fi
-    else
-        echo "Invalid number."
-    fi
+
+        echo "User list:"
+        for i in "${!user_list[@]}"; do
+            idx=$((i+1))
+            echo "  $idx. ${user_list[$i]}"
+        done
+
+        echo "Enter the numbers of the users you want to delete (separated by spaces), or 'b' to go back:"
+        read -p "> " input
+
+        # Handle back
+        if [[ "$input" == "b" || "$input" == "B" ]]; then
+            echo "Returning to main menu."
+            break
+        fi
+
+        # Parse input numbers
+        selected=($input)
+        to_delete=()
+        for num in "${selected[@]}"; do
+            if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le ${#user_list[@]} ]; then
+                to_delete+=("${user_list[$((num-1))]}")
+            else
+                echo "Invalid selection: $num"
+            fi
+        done
+
+        if [ ${#to_delete[@]} -eq 0 ]; then
+            echo "No valid users selected!"
+            continue
+        fi
+
+        echo "You are about to delete the following users: ${to_delete[*]}"
+        read -p "Are you sure? (y/n): " confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            for user in "${to_delete[@]}"; do
+                sudo userdel -r "$user" && echo "Deleted user $user." || echo "Failed to delete $user."
+            done
+        else
+            echo "Cancelled user deletion."
+        fi
+        # After deletion, loop back to show menu again
+    done
 }
 
 function test_proxy() {
