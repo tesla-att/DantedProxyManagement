@@ -31,7 +31,6 @@ function add_single_user() {
         return
     fi
     echo "User $username created."
-    # --- Thay đổi: đặt password luôn, không hỏi ---
     while true; do
         read -s -p "Enter password for $username: " password
         echo
@@ -122,8 +121,8 @@ function add_user() {
 
 function delete_user() {
     while true; do
-        # Get all system users except system accounts
-        user_list=($(awk -F: '{ if ($3 >= 1000 && $1 != "nobody") print $1 }' /etc/passwd))
+        # Get the list of users with shell /bin/false and UID >= 1000 (you can adjust this condition as needed)
+        user_list=($(awk -F: '($3 >= 1000 && $7 == "/bin/false" && $1 != "nobody") {print $1}' /etc/passwd))
         if [ ${#user_list[@]} -eq 0 ]; then
             echo "No users to delete!"
             return
@@ -131,20 +130,19 @@ function delete_user() {
 
         echo "User list:"
         for i in "${!user_list[@]}"; do
-            idx=$((i+1))
-            echo "  $idx. ${user_list[$i]}"
+            printf "  %2d. %s\n" $((i+1)) "${user_list[$i]}"
         done
 
         echo "Enter the numbers of the users you want to delete (separated by spaces), or 'b' to go back:"
         read -p "> " input
 
-        # Handle back
+        # Return to main menu if 'b' is entered
         if [[ "$input" == "b" || "$input" == "B" ]]; then
             echo "Returning to main menu."
             break
         fi
 
-        # Parse input numbers
+        # Parse the entered numbers
         selected=($input)
         to_delete=()
         for num in "${selected[@]}"; do
@@ -161,17 +159,18 @@ function delete_user() {
         fi
 
         echo "You are about to delete the following users: ${to_delete[*]}"
-        read -p "Are you sure? (y/n): " confirm
+        read -p "Are you sure you want to delete? (y/n): " confirm
         if [[ "$confirm" =~ ^[Yy]$ ]]; then
             for user in "${to_delete[@]}"; do
-                sudo userdel -r "$user" && echo "Deleted user $user." || echo "Failed to delete $user."
+                userdel -r "$user" && echo "Deleted user $user." || echo "Failed to delete user $user."
             done
         else
-            echo "Cancelled user deletion."
+            echo "User deletion cancelled."
         fi
-        # After deletion, loop back to show menu again
+        # After deletion, loop back to show the menu again
     done
 }
+
 
 function test_proxy() {
     echo "Paste the proxy list (one proxy per line, press Enter twice to finish):"
