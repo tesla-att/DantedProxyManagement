@@ -1,5 +1,5 @@
 #!/bin/bash
-# User and Proxy Management Script (English) - Optimized Version
+# User and Proxy Management Script (English) - Fixed Version
 
 # Global variables
 readonly SCRIPT_NAME="User & Proxy Manager"
@@ -75,49 +75,70 @@ display_users() {
     return 0
 }
 
-# Secure password input with validation
+# Fixed password input function
 get_password() {
     local username="$1"
     local password password2
+    local attempts=0
+    local max_attempts=3
     
-    while true; do
-        read -s -p "Enter password for $username: " password
-        echo
+    while [[ $attempts -lt $max_attempts ]]; do
+        echo -n "Enter password for $username: "
+        read -s password
+        echo  # New line after password input
         
+        # Check if password is empty
         if [[ -z "$password" ]]; then
             log_error "Password cannot be empty!"
+            ((attempts++))
             continue
         fi
         
+        # Check password length
         if [[ ${#password} -lt 6 ]]; then
             log_error "Password must be at least 6 characters long!"
+            ((attempts++))
             continue
         fi
         
-        read -s -p "Re-enter password for $username: " password2
-        echo
+        # Confirm password
+        echo -n "Re-enter password for $username: "
+        read -s password2
+        echo  # New line after password input
         
+        # Check if passwords match
         if [[ "$password" != "$password2" ]]; then
             log_error "Passwords do not match!"
+            ((attempts++))
             continue
         fi
         
+        # Password is valid
         echo "$password"
         return 0
     done
+    
+    log_error "Maximum password attempts reached!"
+    return 1
 }
 
-# Set user password
+# Set user password with better error handling
 set_user_password() {
     local username="$1"
     local password
     
-    password=$(get_password "$username")
-    if echo "$username:$password" | chpasswd 2>/dev/null; then
-        log_success "Password set for user $username"
-        return 0
+    log_info "Setting password for user: $username"
+    
+    if password=$(get_password "$username"); then
+        if echo "$username:$password" | chpasswd 2>/dev/null; then
+            log_success "Password set for user $username"
+            return 0
+        else
+            log_error "Failed to set password for user $username"
+            return 1
+        fi
     else
-        log_error "Failed to set password for user $username"
+        log_error "Password setup cancelled for user $username"
         return 1
     fi
 }
@@ -138,8 +159,12 @@ create_user() {
     
     if useradd -r -s /bin/false "$username" 2>/dev/null; then
         log_success "User $username created"
-        set_user_password "$username"
-        return 0
+        if set_user_password "$username"; then
+            return 0
+        else
+            log_warning "User $username created but password setup failed"
+            return 1
+        fi
     else
         log_error "Failed to create user $username"
         return 1
@@ -175,7 +200,8 @@ function add_single_user() {
     echo "$SEPARATOR"
     local username
     
-    read -p "Enter username: " username
+    echo -n "Enter username: "
+    read username
     username=$(sanitize_input "$username")
     
     if [[ -z "$username" ]]; then
@@ -194,6 +220,7 @@ function add_multi_users() {
     local line
     
     while true; do
+        echo -n "> "
         read -r line
         line=$(sanitize_input "$line")
         [[ -z "$line" ]] && break
@@ -205,8 +232,12 @@ function add_multi_users() {
         return 1
     fi
     
+    log_info "Creating ${#usernames[@]} users..."
     local created=0 skipped=0
+    
     for username in "${usernames[@]}"; do
+        echo
+        log_info "Processing user: $username"
         if create_user "$username"; then
             ((created++))
         else
@@ -214,6 +245,7 @@ function add_multi_users() {
         fi
     done
     
+    echo
     log_info "Summary: $created users created, $skipped users skipped"
 }
 
@@ -224,7 +256,8 @@ function add_user() {
     echo "2. Add Multiple Users"
     
     local option
-    read -p "Your choice [1-2]: " option
+    echo -n "Your choice [1-2]: "
+    read option
     option=$(sanitize_input "$option")
     
     case $option in
@@ -257,7 +290,8 @@ function delete_user() {
         echo
         log_info "Enter user numbers to delete (space-separated) or 'b' to go back:"
         local input
-        read -p "> " input
+        echo -n "> "
+        read input
         
         if [[ "$input" =~ ^[Bb]$ ]]; then
             log_info "Returning to main menu"
@@ -286,7 +320,8 @@ function delete_user() {
         # Confirmation
         log_warning "You are about to delete: ${to_delete[*]}"
         local confirm
-        read -p "Are you sure? (y/N): " confirm
+        echo -n "Are you sure? (y/N): "
+        read confirm
         
         if [[ "$confirm" =~ ^[Yy]$ ]]; then
             local deleted=0 failed=0
@@ -337,7 +372,9 @@ function test_proxy() {
     local -a proxies=()
     local line
     
-    while IFS= read -r line; do
+    while true; do
+        echo -n "> "
+        read -r line
         [[ -z "$line" ]] && break
         line=$(echo "$line" | tr -d ' \t')
         [[ -n "$line" ]] && proxies+=("$line")
@@ -454,7 +491,8 @@ function install_dante() {
     
     # Get configuration
     local port interface auth_required
-    read -p "Enter port for Dante SOCKS server [1080]: " port
+    echo -n "Enter port for Dante SOCKS server [1080]: "
+    read port
     port=${port:-1080}
     
     if ! [[ "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
@@ -465,7 +503,8 @@ function install_dante() {
     log_info "Available network interfaces:"
     get_network_interfaces
     
-    read -p "Choose interface number [1]: " if_num
+    echo -n "Choose interface number [1]: "
+    read if_num
     if_num=${if_num:-1}
     
     local -a all_interfaces
@@ -478,7 +517,8 @@ function install_dante() {
         interface="${all_interfaces[$((if_num-1))]}"
     fi
     
-    read -p "Require user authentication? (y/N): " auth_required
+    echo -n "Require user authentication? (y/N): "
+    read auth_required
     
     # Create configuration
     cat > "$DANTE_CONFIG" << EOF
@@ -588,7 +628,8 @@ main() {
     while true; do
         show_menu
         local choice
-        read -p "Choose a function [1-7]: " choice
+        echo -n "Choose a function [1-7]: "
+        read choice
         choice=$(sanitize_input "$choice")
         
         case $choice in
