@@ -315,41 +315,58 @@ EOF
     fi
 }
 
-function uninstall_dante() {
-    echo "Uninstalling Dante SOCKS proxy server completely..."
-    if [ "$(id -u)" != "0" ]; then
-        echo "You need root privileges to uninstall Dante server!"
-        return
-    fi
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS=$ID
-    else
-        echo "Cannot determine operating system!"
-        return
-    fi
-    case $OS in
-        ubuntu|debian)
-            apt-get remove --purge -y dante-server
-            apt-get autoremove -y
-            ;;
-        centos|rhel|fedora)
-            yum remove -y dante-server
-            ;;
-        *)
-            echo "Operating system not supported!"
-            return
-            ;;
-    esac
-    rm -f /etc/danted.conf
-    rm -f /var/log/danted.log
-    if [ -f /bin/systemctl ] || [ -f /usr/bin/systemctl ]; then
-        systemctl disable danted
-        systemctl stop danted
-    else
-        service danted stop
-    fi
-    echo "Dante SOCKS proxy server has been completely uninstalled!"
+function delete_users_menu() {
+    while true; do
+        echo "============================================"
+        echo "User Deletion Menu"
+        echo "1. Xoá nhiều user"
+        echo "2. Quay lại menu chính"
+        echo "============================================"
+        read -p "Chọn chức năng [1-2]: " choice
+        case "$choice" in
+            1)
+                echo "Nhập các username muốn xoá, mỗi tên trên 1 dòng. Nhấn Enter 2 lần để kết thúc."
+                users_to_delete=()
+                while true; do
+                    read username
+                    username=$(echo "$username" | tr -d ' ')
+                    if [ -z "$username" ]; then
+                        break
+                    fi
+                    users_to_delete+=("$username")
+                done
+                if [ ${#users_to_delete[@]} -eq 0 ]; then
+                    echo "Không có user nào được nhập!"
+                else
+                    echo "Các user sẽ bị xoá: ${users_to_delete[*]}"
+                    read -p "Bạn chắc chắn muốn xoá các user này? (y/n): " confirm
+                    if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+                        for username in "${users_to_delete[@]}"; do
+                            if id "$username" &>/dev/null; then
+                                userdel -r "$username"
+                                if [ $? -eq 0 ]; then
+                                    echo "Đã xoá user $username."
+                                else
+                                    echo "Lỗi khi xoá user $username."
+                                fi
+                            else
+                                echo "User $username không tồn tại!"
+                            fi
+                        done
+                    else
+                        echo "Hủy thao tác xoá user."
+                    fi
+                fi
+                ;;
+            2)
+                echo "Quay lại menu chính."
+                break
+                ;;
+            *)
+                echo "Lựa chọn không hợp lệ!"
+                ;;
+        esac
+    done
 }
 
 while true; do
