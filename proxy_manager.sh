@@ -205,7 +205,7 @@ install_dante() {
         return
     fi
 
-    # Hàm lấy IP công khai
+    # Get public IP
     get_public_ip() {
         ip=$(curl -s https://api.ipify.org)
         if [[ -z "$ip" ]]; then
@@ -217,7 +217,7 @@ install_dante() {
         echo "$ip"
     }
 
-    # Xác định hệ điều hành
+    # Define OS
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         OS=$ID
@@ -226,7 +226,7 @@ install_dante() {
         return
     fi
 
-    # Cài đặt dante-server
+    # Install dante-server
     case $OS in
         ubuntu|debian)
             apt-get update
@@ -252,7 +252,7 @@ install_dante() {
         port=1080
     fi
 
-    # Hiển thị các interface mạng
+    # Show network interfaces
     all_intf=($(ip -o link show | awk -F': ' '{print $2}'))
     declare -A ip_map
     while IFS= read -r line; do
@@ -278,7 +278,7 @@ install_dante() {
     read -p "Do you want to require user authentication? (y/n): " auth_required
     auth_required=$(echo "$auth_required" | tr -d ' ')
 
-    # Tạo file cấu hình Dante
+    # Create Danted configuration file
     cat > /etc/danted.conf << EOF
 logoutput: syslog
 user.privileged: root
@@ -301,7 +301,7 @@ pass {
 }
 EOF
 
-    # Khởi động dịch vụ và hiển thị trạng thái
+    # Restart service and show status
     if [ -f /bin/systemctl ] || [ -f /usr/bin/systemctl ]; then
         systemctl enable danted
         systemctl restart danted
@@ -323,7 +323,7 @@ EOF
         fi
     fi
 
-    # Thông báo kết quả
+    # Show result
     if [ $status -eq 0 ]; then
         echo "Dante SOCKS server has been installed and is running on port $port"
         echo "Configuration: /etc/danted.conf"
