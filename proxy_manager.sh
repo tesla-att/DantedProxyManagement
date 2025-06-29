@@ -70,25 +70,6 @@ function add_batch_users() {
         return
     fi
 
-#    read -p "Do you want to set the same password for all new users? (y/n): " set_pass_all
-#    set_pass_all=$(echo "$set_pass_all" | tr -d ' ')
-    if [[ "$set_pass_all" == "y" || "$set_pass_all" == "Y" ]]; then
-
-        while true; do
-            read -s -p "Enter the common password for all users: " password
-            echo
-            read -s -p "Re-enter password: " password2
-            echo
-            if [ "$password" != "$password2" ]; then
-                echo "Passwords do not match. Try again."
-            elif [ -z "$password" ]; then
-                echo "Password cannot be empty. Try again."
-            else
-                break
-            fi
-        done
-    fi
-
     for username in "${usernames[@]}"; do
         if [ -z "$username" ]; then
             continue
@@ -99,41 +80,31 @@ function add_batch_users() {
             useradd -r -s /bin/false "$username"
             if [ $? -eq 0 ]; then
                 echo "User $username created."
-                if [[ "$set_pass_all" == "y" || "$set_pass_all" == "Y" ]]; then
-                    echo "$username:$password" | chpasswd
-                    if [ $? -eq 0 ]; then
-                        echo "Password set for user $username."
+                while true; do
+                    read -s -p "Enter password for $username: " upass
+                    echo
+                    read -s -p "Re-enter password for $username: " upass2
+                    echo
+                    if [ "$upass" != "$upass2" ]; then
+                        echo "Passwords do not match. Try again."
+                    elif [ -z "$upass" ]; then
+                        echo "Password cannot be empty. Try again."
                     else
-                        echo "Error setting password for user $username."
-                    fi
-                else
-                    while true; do
-                        read -s -p "Enter password for $username: " upass
-                        echo
-                        read -s -p "Re-enter password for $username: " upass2
-                        echo
-                        if [ "$upass" != "$upass2" ]; then
-                            echo "Passwords do not match. Try again."
-                        elif [ -z "$upass" ]; then
-                            echo "Password cannot be empty. Try again."
+                        echo "$username:$upass" | chpasswd
+                        if [ $? -eq 0 ]; then
+                            echo "Password set for user $username."
                         else
-                            echo "$username:$upass" | chpasswd
-                            if [ $? -eq 0 ]; then
-                                echo "Password set for user $username."
-                            else
-                                echo "Error setting password for user $username."
-                            fi
-                            break
+                            echo "Error setting password for user $username."
                         fi
-                    done
-                fi
+                        break
+                    fi
+                done
             else
                 echo "Error creating user $username."
             fi
         fi
     done
 }
-
 
 function add_user() {
     echo "=============================================================="
