@@ -39,18 +39,23 @@ validate_username() {
     [[ -n "$username" && "$username" =~ ^[a-zA-Z0-9._-]+$ && ${#username} -le 32 ]]
 }
 
-# Get system users with /bin/false shell
+# Get all proxy users (both system and regular users with /bin/false shell)
+get_proxy_users() {
+    awk -F: '($7 == "/bin/false" && $1 != "nobody" && $1 != "nfsnobody") {print $1}' /etc/passwd | sort
+}
+
+# Get regular users with /bin/false shell (UID >= 1000)
+get_regular_users() {
+    awk -F: '($3 >= 1000 && $7 == "/bin/false" && $1 != "nobody") {print $1}' /etc/passwd | sort
+}
+
+# Get system users with /bin/false shell (UID < 1000)
 get_system_users() {
     local min_uid="${1:-0}"
     local max_uid="${2:-999}"
     awk -F: -v min="$min_uid" -v max="$max_uid" \
-        '($3 >= min && $3 <= max && $7 == "/bin/false" && $1 != "nobody") {print $1}' \
-        /etc/passwd
-}
-
-# Get regular users with /bin/false shell  
-get_regular_users() {
-    awk -F: '($3 >= 1000 && $7 == "/bin/false" && $1 != "nobody") {print $1}' /etc/passwd
+        '($3 >= min && $3 <= max && $7 == "/bin/false" && $1 != "nobody" && $1 != "nfsnobody") {print $1}' \
+        /etc/passwd | sort
 }
 
 # Display users in a formatted list
@@ -63,7 +68,9 @@ display_users() {
     
     log_info "User list:"
     for i in "${!users[@]}"; do
-        printf "  %2d. %s\n" $((i+1)) "${users[$i]}"
+        # Get UID for each user
+        local uid=$(id -u "${users[$i]}" 2>/dev/null)
+        printf "  %2d. %-20s (UID: %s)\n" $((i+1)) "${users[$i]}" "${uid:-unknown}"
     done
     return 0
 }
@@ -142,8 +149,26 @@ create_user() {
 function show_users() {
     echo "$SEPARATOR"
     local -a users
-    mapfile -t users < <(get_system_users)
+    mapfile -t users < <(get_proxy_users)
+    
+    if [[ ${#users[@]} -eq 0 ]]; then
+        log_warning "No proxy users found!"
+        log_info "Proxy users are users with shell '/bin/false'"
+        return 1
+    fi
+    
     display_users "${users[@]}"
+    
+    # Show statistics
+    local system_count regular_count
+    system_count=$(get_system_users | wc -l)
+    regular_count=$(get_regular_users | wc -l)
+    
+    echo
+    log_info "Statistics:"
+    echo "  - System users (UID < 1000): $system_count"
+    echo "  - Regular users (UID >= 1000): $regular_count"
+    echo "  - Total proxy users: ${#users[@]}"
 }
 
 function add_single_user() {
@@ -213,11 +238,21 @@ function delete_user() {
     while true; do
         echo "$SEPARATOR"
         local -a user_list
-        mapfile -t user_list < <(get_regular_users)
+        mapfile -t user_list < <(get_proxy_users)
         
-        if ! display_users "${user_list[@]}"; then
+        if [[ ${#user_list[@]} -eq 0 ]]; then
+            log_warning "No proxy users to delete!"
             return 1
         fi
+        
+        # Show all proxy users with more details
+        log_info "Available proxy users:"
+        for i in "${!user_list[@]}"; do
+            local uid=$(id -u "${user_list[$i]}" 2>/dev/null)
+            local user_type="regular"
+            [[ $uid -lt 1000 ]] && user_type="system"
+            printf "  %2d. %-20s (UID: %s, Type: %s)\n" $((i+1)) "${user_list[$i]}" "${uid:-unknown}" "$user_type"
+        done
         
         echo
         log_info "Enter user numbers to delete (space-separated) or 'b' to go back:"
