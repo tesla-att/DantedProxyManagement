@@ -385,7 +385,7 @@ while true; do
         1) install_dante ;;
         2) show_users ;;
         3) add_user ;;
-        4) delete_user ;;
+        4) delete_users_menu ;;
         5) test_proxy ;;
         6) uninstall_dante ;;
         7) exit 0 ;;
