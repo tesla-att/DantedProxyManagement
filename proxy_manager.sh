@@ -1,284 +1,528 @@
 #!/bin/bash
-# User and Proxy Management Script (English)
+# User and Proxy Management Script (English) - Fixed Version
+
+# Global variables
+readonly SCRIPT_NAME="User & Proxy Manager"
+readonly DANTE_CONFIG="/etc/danted.conf"
+readonly SEPARATOR="=============================================================="
+
+# Color codes for better output
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly NC='\033[0m' # No Color
+
+# Utility functions
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Check if running as root
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        log_error "This function requires root privileges!"
+        return 1
+    fi
+    return 0
+}
+
+# Sanitize input by removing spaces and special characters
+sanitize_input() {
+    echo "$1" | tr -d ' \t\n\r' | sed 's/[^a-zA-Z0-9._-]//g'
+}
+
+# Validate username
+validate_username() {
+    local username="$1"
+    [[ -n "$username" && "$username" =~ ^[a-zA-Z0-9._-]+$ && ${#username} -le 32 ]]
+}
+
+# Get all proxy users (both system and regular users with /bin/false shell)
+get_proxy_users() {
+    awk -F: '($7 == "/bin/false" && $1 != "nobody" && $1 != "nfsnobody") {print $1}' /etc/passwd | sort
+}
+
+# Get regular users with /bin/false shell (UID >= 1000)
+get_regular_users() {
+    awk -F: '($3 >= 1000 && $7 == "/bin/false" && $1 != "nobody") {print $1}' /etc/passwd | sort
+}
+
+# Get system users with /bin/false shell (UID < 1000)
+get_system_users() {
+    local min_uid="${1:-0}"
+    local max_uid="${2:-999}"
+    awk -F: -v min="$min_uid" -v max="$max_uid" \
+        '($3 >= min && $3 <= max && $7 == "/bin/false" && $1 != "nobody" && $1 != "nfsnobody") {print $1}' \
+        /etc/passwd | sort
+}
+
+# Display users in a formatted list
+display_users() {
+    local -a users=("$@")
+    if [[ ${#users[@]} -eq 0 ]]; then
+        log_warning "No users found!"
+        return 1
+    fi
+    
+    log_info "User list:"
+    for i in "${!users[@]}"; do
+        # Get UID for each user
+        local uid=$(id -u "${users[$i]}" 2>/dev/null)
+        printf "  %2d. %-20s (UID: %s)\n" $((i+1)) "${users[$i]}" "${uid:-unknown}"
+    done
+    return 0
+}
+
+# Fixed password input function
+get_password() {
+    local username="$1"
+    local password password2
+    local attempts=0
+    local max_attempts=3
+    
+    while [[ $attempts -lt $max_attempts ]]; do
+        echo -n "Enter password for $username: "
+        read -s password
+        echo  # New line after password input
+        
+        # Check if password is empty
+        if [[ -z "$password" ]]; then
+            log_error "Password cannot be empty!"
+            ((attempts++))
+            continue
+        fi
+        
+        # Check password length
+        if [[ ${#password} -lt 6 ]]; then
+            log_error "Password must be at least 6 characters long!"
+            ((attempts++))
+            continue
+        fi
+        
+        # Confirm password
+        echo -n "Re-enter password for $username: "
+        read -s password2
+        echo  # New line after password input
+        
+        # Check if passwords match
+        if [[ "$password" != "$password2" ]]; then
+            log_error "Passwords do not match!"
+            ((attempts++))
+            continue
+        fi
+        
+        # Password is valid
+        echo "$password"
+        return 0
+    done
+    
+    log_error "Maximum password attempts reached!"
+    return 1
+}
+
+# Set user password with better error handling
+set_user_password() {
+    local username="$1"
+    local password
+    
+    log_info "Setting password for user: $username"
+    
+    if password=$(get_password "$username"); then
+        if echo "$username:$password" | chpasswd 2>/dev/null; then
+            log_success "Password set for user $username"
+            return 0
+        else
+            log_error "Failed to set password for user $username"
+            return 1
+        fi
+    else
+        log_error "Password setup cancelled for user $username"
+        return 1
+    fi
+}
+
+# Create a single user
+create_user() {
+    local username="$1"
+    
+    if ! validate_username "$username"; then
+        log_error "Invalid username: $username"
+        return 1
+    fi
+    
+    if id "$username" &>/dev/null; then
+        log_warning "User $username already exists!"
+        return 1
+    fi
+    
+    if useradd -r -s /bin/false "$username" 2>/dev/null; then
+        log_success "User $username created"
+        if set_user_password "$username"; then
+            return 0
+        else
+            log_warning "User $username created but password setup failed"
+            return 1
+        fi
+    else
+        log_error "Failed to create user $username"
+        return 1
+    fi
+}
 
 function show_users() {
-    echo "User list:"
-    mapfile -t USERS < <(awk -F: '($3 < 1000 && $7 == "/bin/false") {print $1}' /etc/passwd)
-    if [ ${#USERS[@]} -eq 0 ]; then
-        echo "No users found!"
-        return
+    echo "$SEPARATOR"
+    local -a users
+    mapfile -t users < <(get_proxy_users)
+    
+    if [[ ${#users[@]} -eq 0 ]]; then
+        log_warning "No proxy users found!"
+        log_info "Proxy users are users with shell '/bin/false'"
+        return 1
     fi
-    for i in "${!USERS[@]}"; do
-        printf "%2d. %s\n" $((i+1)) "${USERS[$i]}"
-    done
+    
+    display_users "${users[@]}"
+    
+    # Show statistics
+    local system_count regular_count
+    system_count=$(get_system_users | wc -l)
+    regular_count=$(get_regular_users | wc -l)
+    
+    echo
+    log_info "Statistics:"
+    echo "  - System users (UID < 1000): $system_count"
+    echo "  - Regular users (UID >= 1000): $regular_count"
+    echo "  - Total proxy users: ${#users[@]}"
 }
 
 function add_single_user() {
-    echo "=============================================================="
-    read -p "Enter username: " username
-    username=$(echo "$username" | tr -d ' ')
-    if [ -z "$username" ]; then
-        echo "Username cannot be empty!"
-        return
+    echo "$SEPARATOR"
+    local username
+    
+    echo -n "Enter username: "
+    read username
+    username=$(sanitize_input "$username")
+    
+    if [[ -z "$username" ]]; then
+        log_error "Username cannot be empty!"
+        return 1
     fi
-    if id "$username" &>/dev/null; then
-        echo "User $username already exists!"
-        return
-    fi
-    useradd -r -s /bin/false "$username"
-    if [ $? -ne 0 ]; then
-        echo "Error creating user $username."
-        return
-    fi
-    echo "User $username created."
-    while true; do
-        read -s -p "Enter password for $username: " password
-        echo
-        read -s -p "Re-enter password for $username: " password2
-        echo
-        if [ "$password" != "$password2" ]; then
-            echo "Passwords do not match. Try again."
-        elif [ -z "$password" ]; then
-            echo "Password cannot be empty. Try again."
-        else
-            echo "$username:$password" | chpasswd
-            if [ $? -eq 0 ]; then
-                echo "Password set for user $username."
-            else
-                echo "Error setting password for user $username."
-            fi
-            break
-        fi
-    done
+    
+    create_user "$username"
 }
 
 function add_multi_users() {
-    echo "=============================================================="
-    echo "You can enter multiple usernames, one per line. Press Enter twice to finish."
-    usernames=()
+    echo "$SEPARATOR"
+    log_info "Enter multiple usernames, one per line. Press Enter on empty line to finish."
+    
+    local -a usernames=()
+    local line
+    
     while true; do
-        read line
-        line=$(echo "$line" | tr -d ' ')
-        if [ -z "$line" ]; then
-            break
-        fi
+        echo -n "> "
+        read -r line
+        line=$(sanitize_input "$line")
+        [[ -z "$line" ]] && break
         usernames+=("$line")
     done
-    if [ ${#usernames[@]} -eq 0 ]; then
-        echo "No users entered!"
-        return
+    
+    if [[ ${#usernames[@]} -eq 0 ]]; then
+        log_warning "No users entered!"
+        return 1
     fi
-
+    
+    log_info "Creating ${#usernames[@]} users..."
+    local created=0 skipped=0
+    
     for username in "${usernames[@]}"; do
-        if [ -z "$username" ]; then
-            continue
-        fi
-        if id "$username" &>/dev/null; then
-            echo "User $username already exists! Skipping."
+        echo
+        log_info "Processing user: $username"
+        if create_user "$username"; then
+            ((created++))
         else
-            useradd -r -s /bin/false "$username"
-            if [ $? -eq 0 ]; then
-                echo "User $username created."
-                while true; do
-                    read -s -p "Enter password for $username: " upass
-                    echo
-                    read -s -p "Re-enter password for $username: " upass2
-                    echo
-                    if [ "$upass" != "$upass2" ]; then
-                        echo "Passwords do not match. Try again."
-                    elif [ -z "$upass" ]; then
-                        echo "Password cannot be empty. Try again."
-                    else
-                        echo "$username:$upass" | chpasswd
-                        if [ $? -eq 0 ]; then
-                            echo "Password set for user $username."
-                        else
-                            echo "Error setting password for user $username."
-                        fi
-                        break
-                    fi
-                done
-            else
-                echo "Error creating user $username."
-            fi
+            ((skipped++))
         fi
     done
+    
+    echo
+    log_info "Summary: $created users created, $skipped users skipped"
 }
 
 function add_user() {
-    echo "=============================================================="
-    echo "Choose user adding method:"
-    echo "1. Add a Single-User"
-    echo "2. Add Multi-Users"
-    read -p "Your choice [1-2]: " option
-    option=$(echo "$option" | tr -d ' ')
+    echo "$SEPARATOR"
+    log_info "Choose user adding method:"
+    echo "1. Add a Single User"
+    echo "2. Add Multiple Users"
+    
+    local option
+    echo -n "Your choice [1-2]: "
+    read option
+    option=$(sanitize_input "$option")
+    
     case $option in
         1) add_single_user ;;
         2) add_multi_users ;;
-        *) echo "Invalid choice!" ;;
+        *) log_error "Invalid choice!" ;;
     esac
 }
 
 function delete_user() {
     while true; do
-        # Get the list of users with shell /bin/false and UID >= 1000 (you can adjust this condition as needed)
-        user_list=($(awk -F: '($3 >= 1000 && $7 == "/bin/false" && $1 != "nobody") {print $1}' /etc/passwd))
-        if [ ${#user_list[@]} -eq 0 ]; then
-            echo "No users to delete!"
-            return
+        echo "$SEPARATOR"
+        local -a user_list
+        mapfile -t user_list < <(get_proxy_users)
+        
+        if [[ ${#user_list[@]} -eq 0 ]]; then
+            log_warning "No proxy users to delete!"
+            return 1
         fi
-
-        echo "User list:"
+        
+        # Show all proxy users with more details
+        log_info "Available proxy users:"
         for i in "${!user_list[@]}"; do
-            printf "  %2d. %s\n" $((i+1)) "${user_list[$i]}"
+            local uid=$(id -u "${user_list[$i]}" 2>/dev/null)
+            local user_type="regular"
+            [[ $uid -lt 1000 ]] && user_type="system"
+            printf "  %2d. %-20s (UID: %s, Type: %s)\n" $((i+1)) "${user_list[$i]}" "${uid:-unknown}" "$user_type"
         done
-
-        echo "Enter the numbers of the users you want to delete (separated by spaces), or 'b' to go back:"
-        read -p "> " input
-
-        # Return to main menu if 'b' is entered
-        if [[ "$input" == "b" || "$input" == "B" ]]; then
-            echo "Returning to main menu."
+        
+        echo
+        log_info "Enter user numbers to delete (space-separated) or 'b' to go back:"
+        local input
+        echo -n "> "
+        read input
+        
+        if [[ "$input" =~ ^[Bb]$ ]]; then
+            log_info "Returning to main menu"
             break
         fi
-
-        # Parse the entered numbers
-        selected=($input)
-        to_delete=()
+        
+        # Parse and validate selections
+        local -a selected=($input)
+        local -a to_delete=()
+        local invalid=0
+        
         for num in "${selected[@]}"; do
-            if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le ${#user_list[@]} ]; then
+            if [[ "$num" =~ ^[0-9]+$ ]] && ((num >= 1 && num <= ${#user_list[@]})); then
                 to_delete+=("${user_list[$((num-1))]}")
             else
-                echo "Invalid selection: $num"
+                log_error "Invalid selection: $num"
+                ((invalid++))
             fi
         done
-
-        if [ ${#to_delete[@]} -eq 0 ]; then
-            echo "No valid users selected!"
+        
+        if [[ ${#to_delete[@]} -eq 0 ]]; then
+            log_warning "No valid users selected!"
             continue
         fi
-
-        echo "You are about to delete the following users: ${to_delete[*]}"
-        read -p "Are you sure you want to delete? (y/n): " confirm
+        
+        # Confirmation
+        log_warning "You are about to delete: ${to_delete[*]}"
+        local confirm
+        echo -n "Are you sure? (y/N): "
+        read confirm
+        
         if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            local deleted=0 failed=0
             for user in "${to_delete[@]}"; do
-                userdel -r "$user" && echo "Deleted user $user." || echo "Failed to delete user $user."
+                if userdel -r "$user" 2>/dev/null; then
+                    log_success "Deleted user $user"
+                    ((deleted++))
+                else
+                    log_error "Failed to delete user $user"
+                    ((failed++))
+                fi
             done
+            log_info "Summary: $deleted users deleted, $failed users failed"
         else
-            echo "User deletion cancelled."
+            log_info "User deletion cancelled"
         fi
-        # After deletion, loop back to show the menu again
     done
 }
 
+# Parallel proxy testing function
+test_single_proxy() {
+    local proxy="$1"
+    local timeout="${2:-10}"
+    
+    IFS=':' read -r ip port user pass <<< "$proxy"
+    local curl_proxy
+    
+    if [[ -z "$user" ]]; then
+        curl_proxy="socks5://$ip:$port"
+    else
+        curl_proxy="socks5://$user:$pass@$ip:$port"
+    fi
+    
+    local result
+    result=$(curl -s --max-time "$timeout" --connect-timeout 5 -x "$curl_proxy" https://api.ip.sb/ip 2>/dev/null)
+    
+    if [[ $? -eq 0 && -n "$result" ]]; then
+        log_success "$proxy -> $result"
+    else
+        log_error "$proxy -> FAILED"
+    fi
+}
 
 function test_proxy() {
-    echo "Paste the proxy list (one proxy per line, press Enter twice to finish):"
-    proxies=()
-    while IFS= read -r line; do
+    echo "$SEPARATOR"
+    log_info "Paste proxy list (one per line, empty line to finish):"
+    
+    local -a proxies=()
+    local line
+    
+    while true; do
+        echo -n "> "
+        read -r line
         [[ -z "$line" ]] && break
-        line=$(echo "$line" | tr -d ' ')
-        proxies+=("$line")
+        line=$(echo "$line" | tr -d ' \t')
+        [[ -n "$line" ]] && proxies+=("$line")
     done
+    
+    if [[ ${#proxies[@]} -eq 0 ]]; then
+        log_warning "No proxies entered!"
+        return 1
+    fi
+    
+    log_info "Testing ${#proxies[@]} proxies..."
+    
+    # Test proxies in parallel (limit to 10 concurrent)
+    local max_jobs=10
+    local job_count=0
+    
     for proxy in "${proxies[@]}"; do
-        IFS=':' read -r ip port user pass <<< "$proxy"
-        if [ -z "$user" ]; then
-            curl_proxy="socks5://$ip:$port"
-        else
-            curl_proxy="socks5://$user:$pass@$ip:$port"
+        test_single_proxy "$proxy" &
+        ((job_count++))
+        
+        if ((job_count >= max_jobs)); then
+            wait
+            job_count=0
         fi
-        result=$(curl -s --max-time 10 -x "$curl_proxy" https://api.ip.sb/ip)
-        if [ $? -eq 0 ] && [[ $result != "" ]]; then
-            echo "[SUCCESS] $proxy"
-        else
-            echo "[FAIL] $proxy"
+    done
+    wait
+    
+    log_info "Proxy testing completed"
+}
+
+# Get public IP with fallback
+get_public_ip() {
+    local ip
+    local -a services=("https://api.ipify.org" "https://ifconfig.me" "https://icanhazip.com")
+    
+    for service in "${services[@]}"; do
+        ip=$(curl -s --max-time 5 "$service" 2>/dev/null | tr -d '\n\r')
+        if [[ -n "$ip" && "$ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            echo "$ip"
+            return 0
         fi
+    done
+    
+    log_warning "Could not determine public IP"
+    echo "unknown"
+    return 1
+}
+
+# Detect OS
+detect_os() {
+    if [[ -f /etc/os-release ]]; then
+        source /etc/os-release
+        echo "$ID"
+    else
+        log_error "Cannot determine operating system!"
+        return 1
+    fi
+}
+
+# Install packages based on OS
+install_package() {
+    local package="$1"
+    local os
+    os=$(detect_os) || return 1
+    
+    case "$os" in
+        ubuntu|debian)
+            apt-get update -qq && apt-get install -y "$package"
+            ;;
+        centos|rhel|fedora)
+            if command -v dnf >/dev/null 2>&1; then
+                dnf install -y epel-release && dnf install -y "$package"
+            else
+                yum install -y epel-release && yum install -y "$package"
+            fi
+            ;;
+        *)
+            log_error "Unsupported operating system: $os"
+            return 1
+            ;;
+    esac
+}
+
+# Get network interfaces
+get_network_interfaces() {
+    local -A interfaces
+    local interface ip
+    
+    while read -r line; do
+        interface=$(echo "$line" | awk '{print $2}')
+        ip=$(echo "$line" | awk '{print $4}' | cut -d'/' -f1)
+        interfaces["$interface"]="$ip"
+    done < <(ip -o -4 addr show 2>/dev/null)
+    
+    local i=1
+    for interface in $(ip -o link show | awk -F': ' '{print $2}'); do
+        ip="${interfaces[$interface]:-No IP}"
+        echo "$i. $interface - IP: $ip"
+        ((i++))
     done
 }
 
-install_dante() {
-    echo "=============================================================="
-    echo "Installing Dante SOCKS proxy server..."
-    if [ "$(id -u)" != "0" ]; then
-        echo "You need root privileges to install Dante server!"
-        return
-    fi
-
-    # Get public IP
-    get_public_ip() {
-        ip=$(curl -s https://api.ipify.org)
-        if [[ -z "$ip" ]]; then
-            ip=$(curl -s https://ifconfig.me)
-        fi
-        if [[ -z "$ip" ]]; then
-            ip=$(curl -s https://icanhazip.com)
-        fi
-        echo "$ip"
-    }
-
-    # Define OS
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS=$ID
-    else
-        echo "Cannot determine operating system!"
-        return
-    fi
-
+function install_dante() {
+    echo "$SEPARATOR"
+    log_info "Installing Dante SOCKS proxy server..."
+    
+    check_root || return 1
+    
     # Install dante-server
-    case $OS in
-        ubuntu|debian)
-            apt-get update
-            apt-get install -y dante-server
-            ;;
-        centos|rhel|fedora)
-            yum install -y epel-release
-            yum install -y dante-server
-            ;;
-        *)
-            echo "Operating system not supported!"
-            return
-            ;;
-    esac
-    if [ $? -ne 0 ]; then
-        echo "Failed to install Dante server!"
-        return
+    if ! install_package "dante-server"; then
+        log_error "Failed to install Dante server!"
+        return 1
     fi
-
-    read -p "Enter port for Dante SOCKS server [1080]: " port
-    port=$(echo "$port" | tr -d ' ')
-    if [ -z "$port" ]; then
-        port=1080
+    
+    # Get configuration
+    local port interface auth_required
+    echo -n "Enter port for Dante SOCKS server [1080]: "
+    read port
+    port=${port:-1080}
+    
+    if ! [[ "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
+        log_error "Invalid port number!"
+        return 1
     fi
-
-    # Show network interfaces
-    all_intf=($(ip -o link show | awk -F': ' '{print $2}'))
-    declare -A ip_map
-    while IFS= read -r line; do
-        intf=$(echo "$line" | awk '{print $2}')
-        ipaddr=$(echo "$line" | awk '{print $4}')
-        ip_map["$intf"]="$ipaddr"
-    done < <(ip -o -4 addr show)
-    echo "Network interfaces:"
-    for i in "${!all_intf[@]}"; do
-        ip="${ip_map[${all_intf[$i]}]}"
-        if [ -z "$ip" ]; then ip="No IP"; fi
-        echo "$((i+1)). ${all_intf[$i]} - IP: $ip"
-    done
-    read -p "Choose the interface number to use for Dante (e.g. 2): " if_num
-    if_num=$(echo "$if_num" | tr -d ' ')
-    if ! [[ "$if_num" =~ ^[0-9]+$ ]] || ((if_num < 1 || if_num > ${#all_intf[@]})); then
-        echo "Invalid choice! Defaulting to eth0."
+    
+    log_info "Available network interfaces:"
+    get_network_interfaces
+    
+    echo -n "Choose interface number [1]: "
+    read if_num
+    if_num=${if_num:-1}
+    
+    local -a all_interfaces
+    mapfile -t all_interfaces < <(ip -o link show | awk -F': ' '{print $2}')
+    
+    if ! [[ "$if_num" =~ ^[0-9]+$ ]] || ((if_num < 1 || if_num > ${#all_interfaces[@]})); then
+        log_warning "Invalid choice! Using eth0"
         interface="eth0"
     else
-        interface="${all_intf[$((if_num-1))]}"
+        interface="${all_interfaces[$((if_num-1))]}"
     fi
-
-    read -p "Do you want to require user authentication? (y/n): " auth_required
-    auth_required=$(echo "$auth_required" | tr -d ' ')
-
-    # Create Danted configuration file
-    cat > /etc/danted.conf << EOF
+    
+    echo -n "Require user authentication? (y/N): "
+    read auth_required
+    
+    # Create configuration
+    cat > "$DANTE_CONFIG" << EOF
+# Dante SOCKS proxy configuration
 logoutput: syslog
 user.privileged: root
 user.unprivileged: nobody
@@ -286,7 +530,7 @@ user.unprivileged: nobody
 internal: 0.0.0.0 port=$port
 external: $interface
 
-method: $(if [[ "$auth_required" == "y" || "$auth_required" == "Y" ]]; then echo "username"; else echo "none"; fi)
+method: $(if [[ "$auth_required" =~ ^[Yy]$ ]]; then echo "username"; else echo "none"; fi)
 
 client pass {
     from: 0.0.0.0/0 to: 0.0.0.0/0
@@ -300,103 +544,106 @@ pass {
 }
 EOF
 
-    # Restart service and show status
-    if [ -f /bin/systemctl ] || [ -f /usr/bin/systemctl ]; then
-        systemctl enable danted
+    # Start and enable service
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl enable danted 2>/dev/null
         systemctl restart danted
-        dante_status=$(systemctl is-active danted)
-        echo "Dante service status: $dante_status"
-        if [ "$dante_status" = "active" ]; then
-            status=0
-        else
-            status=1
-        fi
+        local status
+        status=$(systemctl is-active danted)
     else
         service danted restart
-        dante_status=$(service danted status | grep -E 'Active|running')
-        echo "Dante service status: $dante_status"
-        if [[ "$dante_status" == *"running"* ]]; then
-            status=0
-        else
-            status=1
-        fi
+        local status="unknown"
     fi
-
-    # Show result
-    if [ $status -eq 0 ]; then
-        echo "Dante SOCKS server has been installed and is running on port $port"
-        echo "Configuration: /etc/danted.conf"
-        echo -n "Server IP: "
-        get_public_ip
-        if [[ "$auth_required" == "y" || "$auth_required" == "Y" ]]; then
-            echo "You chose user authentication."
-            echo "Use the 'Add user' function to create users for the proxy."
+    
+    # Show results
+    if [[ "$status" == "active" ]] || service danted status >/dev/null 2>&1; then
+        log_success "Dante SOCKS server installed and running on port $port"
+        log_info "Configuration: $DANTE_CONFIG"
+        log_info "Server IP: $(get_public_ip)"
+        
+        if [[ "$auth_required" =~ ^[Yy]$ ]]; then
+            log_info "Authentication required - use 'Add user' to create proxy users"
         else
-            echo "You chose no authentication."
-            echo "Proxy can be used immediately: $(get_public_ip):$port"
+            log_info "No authentication - proxy ready: $(get_public_ip):$port"
         fi
     else
-        echo "Failed to start Dante server!"
+        log_error "Failed to start Dante server!"
+        return 1
     fi
 }
 
 function uninstall_dante() {
-    echo "Uninstalling Dante SOCKS proxy server completely..."
-    if [ "$(id -u)" != "0" ]; then
-        echo "You need root privileges to uninstall Dante server!"
-        return
-    fi
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS=$ID
+    echo "$SEPARATOR"
+    log_warning "Uninstalling Dante SOCKS proxy server completely..."
+    
+    check_root || return 1
+    
+    # Stop and disable service
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl stop danted 2>/dev/null
+        systemctl disable danted 2>/dev/null
     else
-        echo "Cannot determine operating system!"
-        return
+        service danted stop 2>/dev/null
     fi
-    case $OS in
+    
+    # Remove package
+    local os
+    os=$(detect_os) || return 1
+    
+    case "$os" in
         ubuntu|debian)
             apt-get remove --purge -y dante-server
             apt-get autoremove -y
             ;;
         centos|rhel|fedora)
-            yum remove -y dante-server
-            ;;
-        *)
-            echo "Operating system not supported!"
-            return
+            if command -v dnf >/dev/null 2>&1; then
+                dnf remove -y dante-server
+            else
+                yum remove -y dante-server
+            fi
             ;;
     esac
-    rm -f /etc/danted.conf
-    rm -f /var/log/danted.log
-    if [ -f /bin/systemctl ] || [ -f /usr/bin/systemctl ]; then
-        systemctl disable danted
-        systemctl stop danted
-    else
-        service danted stop
-    fi
-    echo "Dante SOCKS proxy server has been completely uninstalled!"
+    
+    # Remove configuration files
+    rm -f "$DANTE_CONFIG" /var/log/danted.log
+    
+    log_success "Dante SOCKS proxy server completely uninstalled!"
 }
 
-while true; do
-    echo ""
-    echo "============ User & Proxy Manager ============"
+# Main menu
+show_menu() {
+    echo
+    echo "============ $SCRIPT_NAME ============"
     echo "1. Install Dante SOCKS proxy server"
     echo "2. Show user list"
     echo "3. Add user"
     echo "4. Delete user"
     echo "5. Batch test proxies"
-    echo "6. Uninstall Dante SOCKS proxy server completely"
+    echo "6. Uninstall Dante SOCKS proxy server"
     echo "7. Exit"
-    read -p "Choose a function [1-7]: " choice
-    choice=$(echo "$choice" | tr -d ' ')
-    case $choice in
-        1) install_dante ;;
-        2) show_users ;;
-        3) add_user ;;
-        4) delete_user ;;
-        5) test_proxy ;;
-        6) uninstall_dante ;;
-        7) exit 0 ;;
-        *) echo "Invalid choice!" ;;
-    esac
-done
+}
+
+# Main loop
+main() {
+    while true; do
+        show_menu
+        local choice
+        echo -n "Choose a function [1-7]: "
+        read choice
+        choice=$(sanitize_input "$choice")
+        
+        case $choice in
+            1) install_dante ;;
+            2) show_users ;;
+            3) add_user ;;
+            4) delete_user ;;
+            5) test_proxy ;;
+            6) uninstall_dante ;;
+            7) log_info "Goodbye!"; exit 0 ;;
+            *) log_error "Invalid choice!" ;;
+        esac
+    done
+}
+
+# Run main function
+main "$@"
