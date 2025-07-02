@@ -1,363 +1,223 @@
 #!/bin/bash
 
-CONFIG_DIR="$(pwd)/configFiles"
+# Danted SOCKS5 Proxy Manager
+# Professional script for managing SOCKS5 proxy server on Ubuntu
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+NC='\033[0m' # No Color
+
+# Configuration variables
 DANTED_CONFIG="/etc/danted.conf"
+CONFIG_DIR="configFiles"
+DANTED_SERVICE="danted"
+SELECTED_IP=""
+SELECTED_PORT=""
 
-# Function to display the main menu
-show_main_menu() {
+# Create config directory if not exists
+mkdir -p "$CONFIG_DIR"
+
+# Function to print colored output
+print_color() {
+    local color=$1
+    local message=$2
+    echo -e "${color}${message}${NC}"
+}
+
+# Function to print header
+print_header() {
     clear
-    echo "========================================"
-    echo "  Danted SOCKS5 Proxy Management Script "
-    echo "========================================"
-    echo "1. Cài đặt Danted Proxy SOCKS5"
-    echo "2. Hiển thị danh sách người dùng"
-    echo "3. Thêm người dùng mới"
-    echo "4. Xóa người dùng"
-    echo "5. Kiểm tra hàng loạt proxy"
-    echo "6. Gỡ cài đặt Danted hoàn toàn"
-    echo "7. Thoát"
-    echo "========================================"
-    read -p "Vui lòng chọn một tùy chọn: " main_choice
+    print_color $CYAN "================================================================"
+    print_color $CYAN "              DANTED SOCKS5 PROXY MANAGER                       "
+    print_color $CYAN "================================================================"
+    echo
 }
 
-# Function to display the add user submenu
-show_add_user_submenu() {
-    clear
-    echo "========================================"
-    echo "          Thêm người dùng mới           "
-    echo "========================================"
-    echo "1. Thêm một người dùng"
-    echo "2. Thêm nhiều người dùng"
-    echo "3. Quay lại menu chính"
-    echo "========================================"
-    read -p "Vui lòng chọn một tùy chọn: " add_user_choice
-}
-
-# Main loop
-while true;
-do
-    show_main_menu
-    case $main_choice in
-        1)
-            install_danted
-            read -p "Nhấn Enter để tiếp tục..."
-            ;;
-        2)
-            list_users
-            read -p "Nhấn Enter để tiếp tục..."
-            ;;
-        3)
-            while true;
-            do
-                show_add_user_submenu
-                case $add_user_choice in
-                    1)
-                        add_single_user
-                        read -p "Nhấn Enter để tiếp tục..."
-                        ;;
-                    2)
-                        add_multi_user
-                        read -p "Nhấn Enter để tiếp tục..."
-                        ;;
-                    3)
-                        break
-                        ;;
-                    *)
-                        echo "Lựa chọn không hợp lệ. Vui lòng thử lại."
-                        read -p "Nhấn Enter để tiếp tục..."
-                        ;;
-                esac
-            done
-            ;;
-        4)
-            delete_users
-            read -p "Nhấn Enter để tiếp tục..."
-            ;;
-        5)
-            test_proxies
-            read -p "Nhấn Enter để tiếp tục..."
-            ;;
-        6)
-            uninstall_danted
-            read -p "Nhấn Enter để tiếp tục..."
-            ;;
-        7)
-            echo "Thoát khỏi chương trình."
-            exit 0
-            ;;
-        *)
-            echo "Lựa chọn không hợp lệ. Vui lòng thử lại."
-            read -p "Nhấn Enter để tiếp tục..."
-            ;;
-    esac
-done
-
-# Placeholder functions (will be implemented in later phases)
-install_danted() {
-    echo "Chức năng cài đặt Danted chưa được triển khai."
-}
-
-list_users() {
-    echo "Chức năng hiển thị danh sách người dùng chưa được triển khai."
-}
-
-add_single_user() {
-    echo "Chức năng thêm một người dùng chưa được triển khai."
-}
-
-add_multi_user() {
-    echo "Chức năng thêm nhiều người dùng chưa được triển khai."
-}
-
-delete_users() {
-    echo "Chức năng xóa người dùng chưa được triển khai."
-}
-
-test_proxies() {
-    echo "Chức năng kiểm tra hàng loạt proxy chưa được triển khai."
-}
-
-uninstall_danted() {
-    echo "Chức năng gỡ cài đặt Danted chưa được triển khai."
-}
-
-
-
-
-# Function to install Danted SOCKS5 Proxy
-install_danted() {
-    echo "Đang cài đặt Danted SOCKS5 Proxy..."
-
-    # Check if Danted is already installed
-    if dpkg -s dante-server &> /dev/null;
-    then
-        echo "Danted đã được cài đặt. Bỏ qua cài đặt."
-    else
-        sudo apt update
-        sudo apt install -y dante-server
-        if [ $? -ne 0 ]; then
-            echo "Lỗi: Không thể cài đặt Danted. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau."
-            return 1
+# Function to get network interfaces with IPs
+get_network_interfaces() {
+    print_color $YELLOW "Available Network Interfaces:"
+    echo
+    local interfaces=()
+    local ips=()
+    local counter=1
+    
+    while IFS= read -r line; do
+        interface=$(echo "$line" | awk '{print $1}')
+        ip=$(echo "$line" | awk '{print $2}')
+        if [[ "$interface" != "lo" && "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            interfaces+=("$interface")
+            ips+=("$ip")
+            printf "%2d. %-15s %s\n" $counter "$interface" "$ip"
+            ((counter++))
         fi
-        echo "Danted đã được cài đặt thành công."
-    fi
-
-    echo "Đang lấy danh sách Network Interfaces..."
-    interfaces=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+\sscope\sglobal\s\K\w+' | sort -u)
-    if [ -z "$interfaces" ]; then
-        echo "Lỗi: Không tìm thấy Network Interfaces nào. Vui lòng kiểm tra cấu hình mạng."
+    done < <(ip -4 addr show | grep -oP '^\d+: \K\w+|inet \K[^/]+' | paste - -)
+    
+    echo
+    if [[ ${#interfaces[@]} -eq 0 ]]; then
+        print_color $RED "No network interfaces found!"
         return 1
     fi
-
-    echo "Các Network Interfaces có sẵn và địa chỉ IP của chúng:"
-    select_interface_options=()
-    interface_ips=()
-    i=1
-    while IFS= read -r iface;
-    do
-        ip_addr=$(ip -4 addr show $iface | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1)
-        echo "$i. $iface ($ip_addr)"
-        select_interface_options+=("$iface")
-        interface_ips+=("$ip_addr")
-        ((i++))
-    done <<< "$interfaces"
-
-    selected_interface_index=-1
-    while [ $selected_interface_index -lt 1 ] || [ $selected_interface_index -gt ${#select_interface_options[@]} ];
-    do
-        read -p "Vui lòng chọn số của Network Interface để sử dụng: " selected_interface_index
+    
+    while true; do
+        read -p "Select interface number: " choice
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [[ $choice -ge 1 ]] && [[ $choice -le ${#interfaces[@]} ]]; then
+            SELECTED_IP="${ips[$((choice-1))]}"
+            print_color $GREEN "Selected: ${interfaces[$((choice-1))]} - $SELECTED_IP"
+            break
+        else
+            print_color $RED "Invalid selection. Please try again."
+        fi
     done
+    return 0
+}
 
-    NETWORK_INTERFACE=${select_interface_options[$selected_interface_index-1]}
-    NETWORK_IP=${interface_ips[$selected_interface_index-1]}
-    echo "Bạn đã chọn Network Interface: $NETWORK_INTERFACE ($NETWORK_IP)"
-
-    read -p "Vui lòng nhập cổng (port) cho Danted Proxy (ví dụ: 1080): " PROXY_PORT
-    while ! [[ "$PROXY_PORT" =~ ^[0-9]+$ ]] || [ "$PROXY_PORT" -lt 1 ] || [ "$PROXY_PORT" -gt 65535 ];
-    do
-        echo "Cổng không hợp lệ. Vui lòng nhập một số từ 1 đến 65535."
-        read -p "Vui lòng nhập cổng (port) cho Danted Proxy (ví dụ: 1080): " PROXY_PORT
+# Function to install Danted
+install_danted() {
+    print_header
+    print_color $WHITE "Installing Danted SOCKS5 Proxy Server"
+    echo
+    
+    # Check if already installed
+    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+        print_color $YELLOW "Danted is already installed and running."
+        read -p "Do you want to reinstall? (y/N): " reinstall
+        if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
+            return
+        fi
+        systemctl stop $DANTED_SERVICE 2>/dev/null
+    fi
+    
+    # Get network interface
+    if ! get_network_interfaces; then
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Get port
+    while true; do
+        read -p "Enter SOCKS5 port (default: 1080): " port
+        port=${port:-1080}
+        if [[ "$port" =~ ^[0-9]+$ ]] && [[ $port -ge 1 ]] && [[ $port -le 65535 ]]; then
+            if ! netstat -tuln 2>/dev/null | grep -q ":$port "; then
+                SELECTED_PORT="$port"
+                break
+            else
+                print_color $RED "Port $port is already in use. Please choose another port."
+            fi
+        else
+            print_color $RED "Invalid port number. Please enter a number between 1-65535."
+        fi
     done
+    
+    print_color $YELLOW "Installing Danted..."
+    
+    # Update package list
+    apt update -qq
+    
+    # Install Danted
+    if ! apt install -y dante-server >/dev/null 2>&1; then
+        print_color $RED "Failed to install Danted!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Create Danted configuration
+    cat > "$DANTED_CONFIG" << EOF
+# Danted SOCKS5 Proxy Configuration
+logoutput: /var/log/danted.log
+internal: $SELECTED_IP port = $SELECTED_PORT
+external: $SELECTED_IP
 
-    echo "Đang cấu hình Danted..."
-    sudo tee $DANTED_CONFIG > /dev/null <<EOF
-logoutput: syslog
+# Authentication methods
+socksmethod: username
 
-internal: $NETWORK_INTERFACE port = $PROXY_PORT
-external: $NETWORK_INTERFACE
-
-clientmethod: none
-user.privileged: root
-user.notprivileged: nobody
-
+# Client rules
 client pass {
     from: 0.0.0.0/0 to: 0.0.0.0/0
     log: error connect disconnect
 }
 
-client block {
+# SOCKS rules
+socks pass {
     from: 0.0.0.0/0 to: 0.0.0.0/0
-    log: connect error
-}
-
-pass {
-    from: 0.0.0.0/0 to: 0.0.0.0/0
-    protocol: tcp udp
     log: error connect disconnect
-}
-
-block {
-    from: 0.0.0.0/0 to: 0.0.0.0/0
-    log: connect error
+    socksmethod: username
 }
 EOF
-
-    if [ $? -ne 0 ]; then
-        echo "Lỗi: Không thể ghi cấu hình Danted."
-        return 1
-    fi
-
-    echo "Đang khởi động lại dịch vụ Danted..."
-    sudo systemctl restart dante-server
-    if [ $? -ne 0 ]; then
-        echo "Lỗi: Không thể khởi động lại dịch vụ Danted. Vui lòng kiểm tra cấu hình."
-        return 1
-    fi
-
-    echo "Đang kiểm tra trạng thái dịch vụ Danted..."
-    sudo systemctl status dante-server | grep "Active: active (running)"
-    if [ $? -eq 0 ]; then
-        echo "Danted SOCKS5 Proxy đã được cài đặt và chạy thành công trên $NETWORK_IP:$PROXY_PORT."
-        echo "IP của bạn: $NETWORK_IP"
-        echo "Port của bạn: $PROXY_PORT"
+    
+    # Enable and start service
+    systemctl enable $DANTED_SERVICE >/dev/null 2>&1
+    systemctl restart $DANTED_SERVICE
+    
+    # Check status
+    sleep 2
+    if systemctl is-active --quiet $DANTED_SERVICE; then
+        print_color $GREEN "✓ Danted installed and started successfully!"
+        print_color $GREEN "✓ Listening on: $SELECTED_IP:$SELECTED_PORT"
+        print_color $GREEN "✓ Service status: Active"
     else
-        echo "Lỗi: Danted SOCKS5 Proxy không chạy. Vui lòng kiểm tra nhật ký hệ thống để biết thêm chi tiết."
+        print_color $RED "✗ Failed to start Danted service!"
+        print_color $YELLOW "Checking logs..."
+        journalctl -u $DANTED_SERVICE --no-pager -n 10
     fi
-}
-
-# Function to uninstall Danted
-uninstall_danted() {
-    echo "Đang gỡ cài đặt Danted SOCKS5 Proxy..."
-    sudo systemctl stop dante-server &> /dev/null
-    sudo apt purge -y dante-server
-    sudo apt autoremove -y
-    if [ -f "$DANTED_CONFIG" ]; then
-        sudo rm "$DANTED_CONFIG"
-    fi
-    echo "Danted SOCKS5 Proxy đã được gỡ cài đặt hoàn toàn."
-}
-
-
-
-
-# Function to list users
-list_users() {
-    echo "Danh sách người dùng đã tạo:
-"
-    local users=()
-    while IFS= read -r user_entry;
-    do
-        users+=("$user_entry")
-    done < <(grep -E '^[^:]+:[^:]+:[0-9]+:[0-9]+:[^:]+:/bin/false$' /etc/passwd | cut -d: -f1)
-
-    if [ ${#users[@]} -eq 0 ]; then
-        echo "Không có người dùng nào được tạo."
-        return
-    fi
-
-    for i in "${!users[@]}";
-    do
-        printf "%d. %s\n" $((i+1)) "${users[$i]}"
-    done
-}
-
-
-
-
-# Function to add a single user
-add_single_user() {
-    echo "Thêm một người dùng mới:"
-    read -p "Nhập tên người dùng: " username
-    if id "$username" &>/dev/null; then
-        echo "Lỗi: Người dùng '$username' đã tồn tại. Vui lòng chọn tên khác."
-        return 1
-    fi
-
-    read -s -p "Nhập mật khẩu cho người dùng '$username': " password
+    
     echo
-
-    sudo useradd -r -s /bin/false "$username"
-    if [ $? -ne 0 ]; then
-        echo "Lỗi: Không thể tạo người dùng hệ thống '$username'."
-        return 1
-    fi
-
-    echo "$username:$password" | sudo chpasswd
-    if [ $? -ne 0 ]; then
-        echo "Lỗi: Không thể đặt mật khẩu cho người dùng '$username'."
-        return 1
-    fi
-
-    echo "Người dùng '$username' đã được tạo thành công."
-
-    # Create user config file
-    create_user_config_file "$username" "$password"
+    read -p "Press Enter to continue..."
 }
 
-# Function to add multiple users
-add_multi_user() {
-    echo "Thêm nhiều người dùng mới:"
-    echo "Nhập danh sách người dùng (mỗi người dùng một dòng, nhấn Enter hai lần để kết thúc):"
-    usernames=()
-    while IFS= read -r line;
-    do
-        if [ -z "$line" ]; then
-            break
+# Function to show users
+show_users() {
+    print_header
+    print_color $WHITE "SOCKS5 Proxy Users"
+    echo
+    
+    local users=()
+    while IFS= read -r user; do
+        if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
+            users+=("$user")
         fi
-        usernames+=("$line")
-    done
-
-    if [ ${#usernames[@]} -eq 0 ]; then
-        echo "Không có người dùng nào được nhập."
-        return
-    fi
-
-    for username in "${usernames[@]}";
-    do
-        if id "$username" &>/dev/null; then
-            echo "Cảnh báo: Người dùng '$username' đã tồn tại. Bỏ qua."
-            continue
-        fi
-
-        read -s -p "Nhập mật khẩu cho người dùng '$username': " password
+    done < <(getent passwd | grep '/bin/false' | cut -d: -f1 | sort)
+    
+    if [[ ${#users[@]} -eq 0 ]]; then
+        print_color $YELLOW "No SOCKS5 users found."
+    else
+        print_color $GREEN "Found ${#users[@]} SOCKS5 users:"
         echo
-
-        sudo useradd -r -s /bin/false "$username"
-        if [ $? -ne 0 ]; then
-            echo "Lỗi: Không thể tạo người dùng hệ thống '$username'. Bỏ qua."
-            continue
-        fi
-
-        echo "$username:$password" | sudo chpasswd
-        if [ $? -ne 0 ]; then
-            echo "Lỗi: Không thể đặt mật khẩu cho người dùng '$username'. Bỏ qua."
-            continue
-        fi
-
-        echo "Người dùng '$username' đã được tạo thành công."
-
-        # Create user config file
-        create_user_config_file "$username" "$password"
-    done
+        for i in "${!users[@]}"; do
+            printf "%3d. %s\n" $((i+1)) "${users[i]}"
+        done
+    fi
+    
+    echo
+    read -p "Press Enter to continue..."
 }
 
-# Function to create user config file
-create_user_config_file() {
+# Function to create config file for user
+create_user_config() {
     local username=$1
     local password=$2
-    local ip_address="$(ip -4 addr show | grep -oP \'(?<=inet\s)\d+(\.\d+){3}\' | head -1)"
-    local port=$(grep -oP '(?<=internal: .* port = )[0-9]+' $DANTED_CONFIG | head -1)
-    local config_content="""
+    
+    if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
+        # Try to get from existing config
+        if [[ -f "$DANTED_CONFIG" ]]; then
+            SELECTED_IP=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}')
+            SELECTED_PORT=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ')
+        fi
+    fi
+    
+    if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
+        print_color $RED "Error: Server IP and port not configured. Please install Danted first."
+        return 1
+    fi
+    
+    # Read the sample template
+    local config_content='
 {
   "log": {
     "loglevel": "warning"
@@ -419,14 +279,14 @@ create_user_config_file() {
       "settings": {
         "servers": [
           {
-            "address": "$ip_address",
+            "address": "'"$SELECTED_IP"'",
             "ota": false,
-            "port": $port,
+            "port": '"$SELECTED_PORT"',
             "level": 1,
             "users": [
               {
-                "user": "$username",
-                "pass": "$password",
+                "user": "'"$username"'",
+                "pass": "'"$password"'",
                 "level": 1
               }
             ]
@@ -575,111 +435,430 @@ create_user_config_file() {
       }
     ]
   }
-}
-"""
+}'
+    
     echo "$config_content" > "$CONFIG_DIR/$username"
-    echo "Đã tạo file cấu hình cho người dùng '$username' tại $CONFIG_DIR/$username"
+    return 0
 }
 
+# Function to add single user
+add_single_user() {
+    print_header
+    print_color $WHITE "Add Single User"
+    echo
+    
+    while true; do
+        read -p "Enter username: " username
+        if [[ -n "$username" && "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            if id "$username" &>/dev/null; then
+                print_color $RED "User '$username' already exists!"
+            else
+                break
+            fi
+        else
+            print_color $RED "Invalid username. Use only letters, numbers, underscore and dash."
+        fi
+    done
+    
+    while true; do
+        read -s -p "Enter password: " password
+        echo
+        if [[ ${#password} -ge 4 ]]; then
+            read -s -p "Confirm password: " password2
+            echo
+            if [[ "$password" == "$password2" ]]; then
+                break
+            else
+                print_color $RED "Passwords don't match!"
+            fi
+        else
+            print_color $RED "Password must be at least 4 characters long!"
+        fi
+    done
+    
+    # Create user
+    if useradd -r -s /bin/false "$username"; then
+        echo "$username:$password" | chpasswd
+        create_user_config "$username" "$password"
+        print_color $GREEN "✓ User '$username' created successfully!"
+        print_color $GREEN "✓ Config file created: $CONFIG_DIR/$username"
+    else
+        print_color $RED "✗ Failed to create user '$username'!"
+    fi
+    
+    echo
+    read -p "Press Enter to continue..."
+}
 
+# Function to add multiple users
+add_multi_users() {
+    print_header
+    print_color $WHITE "Add Multiple Users"
+    echo
+    
+    print_color $YELLOW "Enter usernames (one per line, press Enter twice to finish):"
+    echo
+    
+    local usernames=()
+    while true; do
+        read -p "> " username
+        if [[ -z "$username" ]]; then
+            if [[ ${#usernames[@]} -gt 0 ]]; then
+                break
+            else
+                print_color $YELLOW "Please enter at least one username."
+                continue
+            fi
+        fi
+        
+        if [[ "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            if id "$username" &>/dev/null; then
+                print_color $RED "User '$username' already exists! Skipping..."
+            else
+                usernames+=("$username")
+                print_color $GREEN "Added: $username"
+            fi
+        else
+            print_color $RED "Invalid username '$username'. Skipping..."
+        fi
+    done
+    
+    if [[ ${#usernames[@]} -eq 0 ]]; then
+        print_color $RED "No valid usernames provided!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    print_color $CYAN "Creating ${#usernames[@]} users..."
+    echo
+    
+    # Create users and set passwords
+    local created_users=()
+    for username in "${usernames[@]}"; do
+        while true; do
+            read -s -p "Set password for '$username': " password
+            echo
+            if [[ ${#password} -ge 4 ]]; then
+                read -s -p "Confirm password for '$username': " password2
+                echo
+                if [[ "$password" == "$password2" ]]; then
+                    if useradd -r -s /bin/false "$username"; then
+                        echo "$username:$password" | chpasswd
+                        create_user_config "$username" "$password"
+                        created_users+=("$username")
+                        print_color $GREEN "✓ User '$username' created successfully!"
+                    else
+                        print_color $RED "✗ Failed to create user '$username'!"
+                    fi
+                    break
+                else
+                    print_color $RED "Passwords don't match for '$username'!"
+                fi
+            else
+                print_color $RED "Password for '$username' must be at least 4 characters long!"
+            fi
+        done
+        echo
+    done
+    
+    print_color $GREEN "Successfully created ${#created_users[@]} users!"
+    print_color $GREEN "Config files created in: $CONFIG_DIR/"
+    
+    echo
+    read -p "Press Enter to continue..."
+}
 
+# Function to manage user addition
+manage_add_users() {
+    while true; do
+        print_header
+        print_color $WHITE "Add Users Menu"
+        echo
+        print_color $CYAN "1. Add single user"
+        print_color $CYAN "2. Add multiple users"
+        print_color $CYAN "3. Back to main menu"
+        echo
+        
+        read -p "Select option [1-3]: " choice
+        
+        case $choice in
+            1) add_single_user ;;
+            2) add_multi_users ;;
+            3) break ;;
+            *) print_color $RED "Invalid option!" ;;
+        esac
+    done
+}
 
 # Function to delete users
 delete_users() {
-    echo "Xóa người dùng:"
+    print_header
+    print_color $WHITE "Delete Users"
+    echo
+    
     local users=()
-    while IFS= read -r user_entry;
-    do
-        users+=("$user_entry")
-    done < <(grep -E 
-
-    if [ ${#users[@]} -eq 0 ]; then
-        echo "Không có người dùng nào để xóa."
+    while IFS= read -r user; do
+        if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
+            users+=("$user")
+        fi
+    done < <(getent passwd | grep '/bin/false' | cut -d: -f1 | sort)
+    
+    if [[ ${#users[@]} -eq 0 ]]; then
+        print_color $YELLOW "No SOCKS5 users found to delete."
+        read -p "Press Enter to continue..."
         return
     fi
-
-    echo "Danh sách người dùng có thể xóa:"
-    for i in "${!users[@]}";
-    do
-        printf "%d. %s\n" $((i+1)) "${users[$i]}"
+    
+    print_color $GREEN "Available users to delete:"
+    echo
+    for i in "${!users[@]}"; do
+        printf "%3d. %s\n" $((i+1)) "${users[i]}"
     done
-
-    read -p "Nhập số của người dùng cần xóa (cách nhau bằng dấu cách, ví dụ: 1 3 5) hoặc 'all' để xóa tất cả: " choices
-
-    if [ "$choices" == "all" ]; then
-        for username in "${users[@]}";
-        do
-            sudo userdel -r "$username"
-            if [ $? -eq 0 ]; then
-                echo "Đã xóa người dùng 
-                if [ -f "$CONFIG_DIR/$username" ]; then
-                    rm "$CONFIG_DIR/$username"
-                    echo "Đã xóa file cấu hình cho người dùng 
-                fi
-            else
-                echo "Lỗi: Không thể xóa người dùng 
-            fi
-        done
-    else
-        for choice in $choices;
-        do
-            if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#users[@]} ]; then
-                username=${users[$choice-1]}
-                sudo userdel -r "$username"
-                if [ $? -eq 0 ]; then
-                    echo "Đã xóa người dùng 
-                    if [ -f "$CONFIG_DIR/$username" ]; then
-                        rm "$CONFIG_DIR/$username"
-                        echo "Đã xóa file cấu hình cho người dùng 
-                    fi
-                else
-                    echo "Lỗi: Không thể xóa người dùng 
-                fi
-            else
-                echo "Lựa chọn 
-            fi
-        done
-    fi
-}
-
-
-
-
-# Function to test multiple proxies
-test_proxies() {
-    echo "Kiểm tra hàng loạt proxy:"
-    echo "Nhập danh sách proxy (mỗi proxy một dòng theo định dạng IP:port:username:password, nhấn Enter hai lần để kết thúc):"
-    proxies=()
-    while IFS= read -r line;
-    do
-        if [ -z "$line" ]; then
-            break
-        fi
-        proxies+=("$line")
-    done
-
-    if [ ${#proxies[@]} -eq 0 ]; then
-        echo "Không có proxy nào được nhập."
+    
+    echo
+    print_color $YELLOW "Enter user numbers to delete (space-separated, e.g., '1 3 5'):"
+    read -p "> " selections
+    
+    if [[ -z "$selections" ]]; then
+        print_color $YELLOW "No selection made."
+        read -p "Press Enter to continue..."
         return
     fi
-
-    for proxy_entry in "${proxies[@]}";
-    do
-        IFS=":" read -r ip port username password <<< "$proxy_entry"
-        if [ -z "$ip" ] || [ -z "$port" ] || [ -z "$username" ] || [ -z "$password" ]; then
-            echo "Định dạng proxy không hợp lệ: $proxy_entry. Bỏ qua."
-            continue
-        fi
-
-        echo "Đang kiểm tra proxy: $ip:$port với người dùng $username..."
-        curl_proxy="socks5://$username:$password@$ip:$port"
-        # Using a public IP check service to verify proxy functionality
-        response=$(curl -s --proxy "$curl_proxy" https://api.ipify.org)
-
-        if [ $? -eq 0 ]; then
-            echo "Proxy $proxy_entry hoạt động. IP công cộng: $response"
+    
+    local to_delete=()
+    for selection in $selections; do
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [[ $selection -ge 1 ]] && [[ $selection -le ${#users[@]} ]]; then
+            to_delete+=("${users[$((selection-1))]}")
         else
-            echo "Proxy $proxy_entry không hoạt động hoặc có lỗi."
+            print_color $RED "Invalid selection: $selection"
         fi
     done
+    
+    if [[ ${#to_delete[@]} -eq 0 ]]; then
+        print_color $RED "No valid users selected!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    echo
+    print_color $YELLOW "Users to be deleted:"
+    for user in "${to_delete[@]}"; do
+        echo "  - $user"
+    done
+    
+    echo
+    read -p "Are you sure you want to delete these users? (y/N): " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        print_color $YELLOW "Operation cancelled."
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Delete users
+    local deleted_count=0
+    for user in "${to_delete[@]}"; do
+        if userdel "$user" 2>/dev/null; then
+            # Remove config file
+            rm -f "$CONFIG_DIR/$user"
+            print_color $GREEN "✓ Deleted user: $user"
+            ((deleted_count++))
+        else
+            print_color $RED "✗ Failed to delete user: $user"
+        fi
+    done
+    
+    print_color $GREEN "Successfully deleted $deleted_count users!"
+    
+    echo
+    read -p "Press Enter to continue..."
 }
+
+# Function to test proxies
+test_proxies() {
+    print_header
+    print_color $WHITE "Test Proxies"
+    echo
+    
+    print_color $YELLOW "Enter proxy details in format: IP:PORT:USERNAME:PASSWORD"
+    print_color $YELLOW "(One per line, press Enter twice to finish):"
+    echo
+    
+    local proxies=()
+    while true; do
+        read -p "> " proxy_line
+        if [[ -z "$proxy_line" ]]; then
+            if [[ ${#proxies[@]} -gt 0 ]]; then
+                break
+            else
+                print_color $YELLOW "Please enter at least one proxy."
+                continue
+            fi
+        fi
+        
+        if [[ "$proxy_line" =~ ^[^:]+:[0-9]+:[^:]+:[^:]+$ ]]; then
+            proxies+=("$proxy_line")
+            print_color $GREEN "Added: $proxy_line"
+        else
+            print_color $RED "Invalid format: $proxy_line (Expected: IP:PORT:USERNAME:PASSWORD)"
+        fi
+    done
+    
+    if [[ ${#proxies[@]} -eq 0 ]]; then
+        print_color $RED "No valid proxies provided!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    print_color $CYAN "Testing ${#proxies[@]} proxies..."
+    echo
+    
+    local success_count=0
+    local total_count=${#proxies[@]}
+    
+    for i in "${!proxies[@]}"; do
+        local proxy="${proxies[i]}"
+        IFS=':' read -r ip port user pass <<< "$proxy"
+        
+        local curl_proxy="socks5://$user:$pass@$ip:$port"
+        
+        printf "[%2d/%2d] Testing %s:%s@%s:%s ... " $((i+1)) $total_count "$user" "$pass" "$ip" "$port"
+        
+        # Test with timeout
+        if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
+            print_color $GREEN "✓ SUCCESS"
+            ((success_count++))
+        else
+            print_color $RED "✗ FAILED"
+        fi
+    done
+    
+    echo
+    print_color $CYAN "Test Results:"
+    print_color $GREEN "✓ Successful: $success_count/$total_count"
+    print_color $RED "✗ Failed: $((total_count - success_count))/$total_count"
+    
+    local success_rate=$((success_count * 100 / total_count))
+    print_color $YELLOW "Success Rate: $success_rate%"
+    
+    echo
+    read -p "Press Enter to continue..."
+}
+
+# Function to uninstall Danted
+uninstall_danted() {
+    print_header
+    print_color $WHITE "Uninstall Danted"
+    echo
+    
+    print_color $RED "WARNING: This will completely remove Danted and all configurations!"
+    echo
+    read -p "Are you sure you want to uninstall Danted? (y/N): " confirm
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        print_color $YELLOW "Operation cancelled."
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    print_color $YELLOW "Uninstalling Danted..."
+    
+    # Stop and disable service
+    systemctl stop $DANTED_SERVICE 2>/dev/null
+    systemctl disable $DANTED_SERVICE 2>/dev/null
+    
+    # Remove package
+    apt remove --purge -y dante-server >/dev/null 2>&1
+    
+    # Remove configuration files
+    rm -f "$DANTED_CONFIG"
+    rm -f /var/log/danted.log
+    
+    # Ask about user configs
+    if [[ -d "$CONFIG_DIR" ]] && [[ $(ls -A "$CONFIG_DIR" 2>/dev/null) ]]; then
+        echo
+        read -p "Do you want to remove all user config files in '$CONFIG_DIR'? (y/N): " remove_configs
+        if [[ "$remove_configs" =~ ^[Yy]$ ]]; then
+            rm -rf "$CONFIG_DIR"
+            print_color $GREEN "✓ User config files removed"
+        fi
+    fi
+    
+    # Ask about users
+    local socks_users=()
+    while IFS= read -r user; do
+        if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
+            socks_users+=("$user")
+        fi
+    done < <(getent passwd | grep '/bin/false' | cut -d: -f1)
+    
+    if [[ ${#socks_users[@]} -gt 0 ]]; then
+        echo
+        print_color $YELLOW "Found ${#socks_users[@]} SOCKS5 users:"
+        for user in "${socks_users[@]}"; do
+            echo "  - $user"
+        done
+        echo
+        read -p "Do you want to remove all SOCKS5 users? (y/N): " remove_users
+        if [[ "$remove_users" =~ ^[Yy]$ ]]; then
+            for user in "${socks_users[@]}"; do
+                userdel "$user" 2>/dev/null
+                print_color $GREEN "✓ Removed user: $user"
+            done
+        fi
+    fi
+    
+    print_color $GREEN "✓ Danted has been completely uninstalled!"
+    
+    echo
+    read -p "Press Enter to continue..."
+}
+
+# Main menu function
+show_main_menu() {
+    print_header
+    print_color $WHITE "Main Menu"
+    echo
+    print_color $CYAN "1. Install Danted SOCKS5 Proxy"
+    print_color $CYAN "2. Show Users"
+    print_color $CYAN "3. Add Users"
+    print_color $CYAN "4. Delete Users"
+    print_color $CYAN "5. Test Proxies"
+    print_color $CYAN "6. Uninstall Danted"
+    print_color $CYAN "7. Exit"
+    echo
+}
+
+# Main program loop
+main() {
+    # Check if running as root
+    if [[ $EUID -ne 0 ]]; then
+        print_color $RED "This script must be run as root!"
+        print_color $YELLOW "Please run: sudo $0"
+        exit 1
+    fi
+    
+    while true; do
+        show_main_menu
+        read -p "Select option [1-7]: " choice
+        
+        case $choice in
+            1) install_danted ;;
+            2) show_users ;;
+            3) manage_add_users ;;
+            4) delete_users ;;
+            5) test_proxies ;;
+            6) uninstall_danted ;;
+            7) 
+                print_color $GREEN "Thank you for using Danted SOCKS5 Proxy Manager!"
+                exit 0
+                ;;
+            *) 
+                print_color $RED "Invalid option! Please select 1-7."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# Run main function
+main "$@"
