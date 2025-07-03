@@ -1,6 +1,8 @@
 #!/bin/bash
-# Danted SOCKS5 Proxy Manager - Enhanced Version
+
+# Danted SOCKS5 Proxy Manager v2.0
 # Professional script for managing SOCKS5 proxy server on Ubuntu
+# Enhanced with better UI, multi-line input handling, and system monitoring
 
 # Colors for output
 RED='\033[0;31m'
@@ -10,13 +12,15 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
+GRAY='\033[0;37m'
+BOLD='\033[1m'
+DIM='\033[2m'
 NC='\033[0m' # No Color
 
 # Configuration variables
 DANTED_CONFIG="/etc/danted.conf"
 CONFIG_DIR="configFiles"
 DANTED_SERVICE="danted"
-DANTED_LOG="/var/log/danted.log"
 SELECTED_IP=""
 SELECTED_PORT=""
 
@@ -30,23 +34,89 @@ print_color() {
     echo -e "${color}${message}${NC}"
 }
 
-# Function to print header
+# Function to print fancy header
 print_header() {
     clear
-    print_color $CYAN "================================================================"
-    print_color $CYAN "           DANTED SOCKS5 PROXY MANAGER - ENHANCED"
-    print_color $CYAN "================================================================"
+    echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${WHITE}${BOLD}                        DANTED SOCKS5 PROXY MANAGER v2.0                       ${NC}${CYAN}║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${GRAY}                     Professional Proxy Management Tool                       ${NC}${CYAN}║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo
+}
+
+# Function to print section header
+print_section_header() {
+    local title=$1
+    echo -e "${BLUE}┌─────────────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${BLUE}│${WHITE}${BOLD} $title${NC}${BLUE}$(printf "%*s" $((77 - ${#title})) "")│${NC}"
+    echo -e "${BLUE}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo
+}
+
+# Function to print info box
+print_info_box() {
+    local message=$1
+    local color=${2:-$CYAN}
+    echo -e "${color}┌─ INFO ──────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${color}│${NC} $message"
+    echo -e "${color}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo
+}
+
+# Function to print success message
+print_success() {
+    local message=$1
+    echo -e "${GREEN}✓${NC} ${GREEN}$message${NC}"
+}
+
+# Function to print error message
+print_error() {
+    local message=$1
+    echo -e "${RED}✗${NC} ${RED}$message${NC}"
+}
+
+# Function to print warning message
+print_warning() {
+    local message=$1
+    echo -e "${YELLOW}⚠${NC} ${YELLOW}$message${NC}"
+}
+
+# Function to read multiline input with paste support
+read_multiline_input() {
+    local prompt=$1
+    local items=()
+    local input=""
+    
+    print_color $YELLOW "$prompt"
+    print_info_box "You can paste multiple lines at once. Press Ctrl+D or type 'END' to finish."
+    
+    echo -e "${GRAY}Enter data:${NC}"
+    
+    # Read input until EOF or "END"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == "END" ]]; then
+            break
+        fi
+        if [[ -n "$line" ]]; then
+            items+=("$line")
+            print_color $GREEN "  ✓ $line"
+        fi
+    done
+    
+    # Return the items array
+    printf '%s\n' "${items[@]}"
 }
 
 # Function to get network interfaces with IPs
 get_network_interfaces() {
-    print_color $YELLOW "Available Network Interfaces:"
-    echo
+    print_section_header "Network Interface Selection"
     
     local interfaces=()
     local ips=()
     local counter=1
+    
+    echo -e "${CYAN}╭─ Available Network Interfaces ─────────────────────────────────────────────╮${NC}"
     
     while IFS= read -r line; do
         interface=$(echo "$line" | awk '{print $1}')
@@ -54,40 +124,217 @@ get_network_interfaces() {
         if [[ "$interface" != "lo" && "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             interfaces+=("$interface")
             ips+=("$ip")
-            printf "%2d. %-15s %s\n" $counter "$interface" "$ip"
+            printf "${CYAN}│${NC} %2d. %-20s ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" $counter "$interface" "$ip" $((50 - ${#interface} - ${#ip})) ""
             ((counter++))
         fi
     done < <(ip -4 addr show | grep -oP '^\d+: \K\w+|inet \K[^/]+' | paste - -)
     
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
+    
     if [[ ${#interfaces[@]} -eq 0 ]]; then
-        print_color $RED "No network interfaces found!"
+        print_error "No network interfaces found!"
         return 1
     fi
     
     while true; do
-        read -p "Select interface number: " choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select interface number: ")" choice
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ $choice -ge 1 ]] && [[ $choice -le ${#interfaces[@]} ]]; then
             SELECTED_IP="${ips[$((choice-1))]}"
-            print_color $GREEN "Selected: ${interfaces[$((choice-1))]} - $SELECTED_IP"
+            print_success "Selected: ${interfaces[$((choice-1))]} - $SELECTED_IP"
             break
         else
-            print_color $RED "Invalid selection. Please try again."
+            print_error "Invalid selection. Please try again."
         fi
     done
     return 0
 }
 
+# Function to get system info
+get_system_info() {
+    local cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
+    local memory_info=$(free -h | grep "Mem:")
+    local memory_used=$(echo $memory_info | awk '{print $3}')
+    local memory_total=$(echo $memory_info | awk '{print $2}')
+    local disk_usage=$(df -h / | tail -1 | awk '{print $5}')
+    local uptime=$(uptime -p)
+    
+    echo -e "${CYAN}╭─ System Information ───────────────────────────────────────────────────────╮${NC}"
+    printf "${CYAN}│${NC} CPU Usage:    ${GREEN}%-10s${NC}%*s${CYAN}│${NC}\n" "$cpu_usage%" $((60 - ${#cpu_usage})) ""
+    printf "${CYAN}│${NC} Memory:       ${GREEN}%-10s${NC} / ${GREEN}%-10s${NC}%*s${CYAN}│${NC}\n" "$memory_used" "$memory_total" $((40 - ${#memory_used} - ${#memory_total})) ""
+    printf "${CYAN}│${NC} Disk Usage:   ${GREEN}%-10s${NC}%*s${CYAN}│${NC}\n" "$disk_usage" $((60 - ${#disk_usage})) ""
+    printf "${CYAN}│${NC} Uptime:       ${GREEN}%-30s${NC}%*s${CYAN}│${NC}\n" "$uptime" $((40 - ${#uptime})) ""
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+}
+
+# Function to check service status
+check_service_status() {
+    print_header
+    print_section_header "Service Status & System Monitoring"
+    
+    # Service status
+    echo -e "${CYAN}╭─ Danted Service Status ─────────────────────────────────────────────────────╮${NC}"
+    
+    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+        local status="RUNNING"
+        local color=$GREEN
+        local status_icon="●"
+    else
+        local status="STOPPED"
+        local color=$RED
+        local status_icon="●"
+    fi
+    
+    printf "${CYAN}│${NC} Service:      ${color}${status_icon} %-10s${NC}%*s${CYAN}│${NC}\n" "$status" $((60 - ${#status})) ""
+    
+    if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
+        printf "${CYAN}│${NC} Auto-start:   ${GREEN}● ENABLED${NC}%*s${CYAN}│${NC}\n" 54 ""
+    else
+        printf "${CYAN}│${NC} Auto-start:   ${RED}● DISABLED${NC}%*s${CYAN}│${NC}\n" 53 ""
+    fi
+    
+    # Get port and IP if config exists
+    if [[ -f "$DANTED_CONFIG" ]]; then
+        local config_ip=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}')
+        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ')
+        printf "${CYAN}│${NC} Listen on:    ${YELLOW}%-20s${NC}%*s${CYAN}│${NC}\n" "$config_ip:$config_port" $((50 - ${#config_ip} - ${#config_port})) ""
+    fi
+    
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo
+    
+    # System information
+    get_system_info
+    echo
+    
+    # Network connections
+    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+        echo -e "${CYAN}╭─ Active Connections ────────────────────────────────────────────────────────╮${NC}"
+        local connections=$(netstat -tn 2>/dev/null | grep ":$config_port " | wc -l)
+        printf "${CYAN}│${NC} Active SOCKS5 connections: ${GREEN}%-10s${NC}%*s${CYAN}│${NC}\n" "$connections" $((50 - ${#connections})) ""
+        echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+        echo
+    fi
+    
+    # Recent logs
+    echo -e "${CYAN}╭─ Recent Service Logs ───────────────────────────────────────────────────────╮${NC}"
+    if journalctl -u $DANTED_SERVICE --no-pager -n 5 --since "1 hour ago" 2>/dev/null | grep -q "."; then
+        journalctl -u $DANTED_SERVICE --no-pager -n 5 --since "1 hour ago" 2>/dev/null | while read -r line; do
+            if [[ ${#line} -gt 75 ]]; then
+                line="${line:0:75}..."
+            fi
+            printf "${CYAN}│${NC} ${GRAY}%-75s${NC}${CYAN}│${NC}\n" "$line"
+        done
+    else
+        printf "${CYAN}│${NC} ${GRAY}%-75s${NC}${CYAN}│${NC}\n" "No recent logs found"
+    fi
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo
+    
+    # Control options
+    echo -e "${YELLOW}Control Options:${NC}"
+    echo -e "${CYAN}1.${NC} Restart Service"
+    echo -e "${CYAN}2.${NC} Stop Service"
+    echo -e "${CYAN}3.${NC} Start Service"
+    echo -e "${CYAN}4.${NC} View Full Logs"
+    echo -e "${CYAN}5.${NC} Test Internet Bandwidth"
+    echo -e "${CYAN}6.${NC} Back to Main Menu"
+    echo
+    
+    while true; do
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-6]: ")" choice
+        
+        case $choice in
+            1)
+                print_color $YELLOW "Restarting Danted service..."
+                if systemctl restart $DANTED_SERVICE; then
+                    print_success "Service restarted successfully!"
+                else
+                    print_error "Failed to restart service!"
+                fi
+                sleep 2
+                check_service_status
+                return
+                ;;
+            2)
+                print_color $YELLOW "Stopping Danted service..."
+                if systemctl stop $DANTED_SERVICE; then
+                    print_success "Service stopped successfully!"
+                else
+                    print_error "Failed to stop service!"
+                fi
+                sleep 2
+                check_service_status
+                return
+                ;;
+            3)
+                print_color $YELLOW "Starting Danted service..."
+                if systemctl start $DANTED_SERVICE; then
+                    print_success "Service started successfully!"
+                else
+                    print_error "Failed to start service!"
+                fi
+                sleep 2
+                check_service_status
+                return
+                ;;
+            4)
+                print_section_header "Full Service Logs"
+                journalctl -u $DANTED_SERVICE --no-pager -n 50
+                echo
+                read -p "Press Enter to continue..."
+                check_service_status
+                return
+                ;;
+            5)
+                test_bandwidth
+                check_service_status
+                return
+                ;;
+            6)
+                break
+                ;;
+            *)
+                print_error "Invalid option!"
+                ;;
+        esac
+    done
+}
+
+# Function to test bandwidth
+test_bandwidth() {
+    print_section_header "Internet Bandwidth Test"
+    
+    print_color $YELLOW "Testing download speed..."
+    
+    # Test with curl
+    local test_file="http://speedtest.ftp.otenet.gr/files/test1Mb.db"
+    local start_time=$(date +%s.%N)
+    
+    if curl -s -w "%{speed_download}" -o /dev/null "$test_file" 2>/dev/null | grep -q "[0-9]"; then
+        local end_time=$(date +%s.%N)
+        local duration=$(echo "$end_time - $start_time" | bc 2>/dev/null || echo "1")
+        local speed=$(curl -s -w "%{speed_download}" -o /dev/null "$test_file" 2>/dev/null)
+        local speed_mbps=$(echo "scale=2; $speed / 1024 / 1024 * 8" | bc 2>/dev/null || echo "0")
+        
+        print_success "Download speed: ${speed_mbps} Mbps"
+    else
+        print_error "Bandwidth test failed!"
+    fi
+    
+    echo
+    read -p "Press Enter to continue..."
+}
+
 # Function to install Danted
 install_danted() {
     print_header
-    print_color $WHITE "Installing Danted SOCKS5 Proxy Server"
-    echo
+    print_section_header "Install Danted SOCKS5 Proxy Server"
     
     # Check if already installed
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        print_color $YELLOW "Danted is already installed and running."
-        read -p "Do you want to reinstall? (y/N): " reinstall
+        print_warning "Danted is already installed and running."
+        read -p "$(echo -e "${YELLOW}❯${NC} Do you want to reinstall? (y/N): ")" reinstall
         if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
             return
         fi
@@ -101,57 +348,47 @@ install_danted() {
     fi
     
     # Get port
+    echo
     while true; do
-        read -p "Enter SOCKS5 port (default: 1080): " port
+        read -p "$(echo -e "${YELLOW}❯${NC} Enter SOCKS5 port (default: 1080): ")" port
         port=${port:-1080}
         if [[ "$port" =~ ^[0-9]+$ ]] && [[ $port -ge 1 ]] && [[ $port -le 65535 ]]; then
             if ! netstat -tuln 2>/dev/null | grep -q ":$port "; then
                 SELECTED_PORT="$port"
                 break
             else
-                print_color $RED "Port $port is already in use. Please choose another port."
+                print_error "Port $port is already in use. Please choose another port."
             fi
         else
-            print_color $RED "Invalid port number. Please enter a number between 1-65535."
+            print_error "Invalid port number. Please enter a number between 1-65535."
         fi
     done
     
-    print_color $YELLOW "Installing Danted..."
+    echo
+    print_info_box "Installing Danted SOCKS5 Proxy Server..."
     
     # Update package list
+    echo -e "${GRAY}Updating package list...${NC}"
     apt update -qq
     
     # Install Danted
+    echo -e "${GRAY}Installing dante-server...${NC}"
     if ! apt install -y dante-server >/dev/null 2>&1; then
-        print_color $RED "Failed to install Danted!"
+        print_error "Failed to install Danted!"
         read -p "Press Enter to continue..."
         return
     fi
     
-    # Create Danted configuration with enhanced settings
+    # Create Danted configuration
+    echo -e "${GRAY}Creating configuration...${NC}"
     cat > "$DANTED_CONFIG" << EOF
-# Danted SOCKS5 Proxy Configuration - Enhanced
-# Generated on: $(date)
-
-# Logging
-logoutput: $DANTED_LOG
-debug: 0
-
-# Network settings
+# Danted SOCKS5 Proxy Configuration
+logoutput: /var/log/danted.log
 internal: $SELECTED_IP port = $SELECTED_PORT
 external: $SELECTED_IP
 
-# Performance tuning
-timeout.connect: 30
-timeout.io: 86400
-timeout.negotiate: 30
-
 # Authentication methods
 socksmethod: username
-
-# User privileges
-user.privileged: root
-user.unprivileged: nobody
 
 # Client rules
 client pass {
@@ -162,39 +399,608 @@ client pass {
 # SOCKS rules
 socks pass {
     from: 0.0.0.0/0 to: 0.0.0.0/0
-    command: bind connect udpassociate
     log: error connect disconnect
     socksmethod: username
-}
-
-# Security rules
-socks block {
-    from: 0.0.0.0/0 to: 127.0.0.0/8
-    log: connect error
-}
-
-socks block {
-    from: 0.0.0.0/0 to: 10.0.0.0/8
-    log: connect error
 }
 EOF
     
     # Enable and start service
+    echo -e "${GRAY}Starting service...${NC}"
     systemctl enable $DANTED_SERVICE >/dev/null 2>&1
     systemctl restart $DANTED_SERVICE
     
     # Check status
     sleep 2
+    echo
     if systemctl is-active --quiet $DANTED_SERVICE; then
-        print_color $GREEN "✓ Danted installed and started successfully!"
-        print_color $GREEN "✓ Listening on: $SELECTED_IP:$SELECTED_PORT"
-        print_color $GREEN "✓ Service status: Active"
-        show_service_status
+        print_success "Danted installed and started successfully!"
+        print_success "Listening on: $SELECTED_IP:$SELECTED_PORT"
+        print_success "Service status: Active"
     else
-        print_color $RED "✗ Failed to start Danted service!"
-        print_color $YELLOW "Checking logs..."
+        print_error "Failed to start Danted service!"
+        print_warning "Checking logs..."
         journalctl -u $DANTED_SERVICE --no-pager -n 10
     fi
+    
+    echo
+    read -p "Press Enter to continue..."
+}
+
+# Function to show users
+show_users() {
+    print_header
+    print_section_header "SOCKS5 Proxy Users"
+    
+    local users=()
+    while IFS= read -r user; do
+        if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
+            users+=("$user")
+        fi
+    done < <(getent passwd | grep '/bin/false' | cut -d: -f1 | sort)
+    
+    if [[ ${#users[@]} -eq 0 ]]; then
+        print_warning "No SOCKS5 users found."
+    else
+        echo -e "${CYAN}╭─ Users List (${#users[@]} users) ──────────────────────────────────────────────────────╮${NC}"
+        for i in "${!users[@]}"; do
+            printf "${CYAN}│${NC} %3d. %-20s%*s${CYAN}│${NC}\n" $((i+1)) "${users[i]}" $((50 - ${#users[i]})) ""
+        done
+        echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    fi
+    
+    echo
+    read -p "Press Enter to continue..."
+}
+
+# Function to create config file for user
+create_user_config() {
+    local username=$1
+    local password=$2
+    
+    if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
+        # Try to get from existing config
+        if [[ -f "$DANTED_CONFIG" ]]; then
+            SELECTED_IP=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}')
+            SELECTED_PORT=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ')
+        fi
+    fi
+    
+    if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
+        print_error "Server IP and port not configured. Please install Danted first."
+        return 1
+    fi
+    
+    # Create config content
+    local config_content='
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "dns": {
+    "hosts": {
+      "dns.google": "8.8.8.8",
+      "proxy.example.com": "127.0.0.1"
+    },
+    "servers": [
+      {
+        "address": "1.1.1.1",
+        "skipFallback": true,
+        "domains": [
+          "domain:googleapis.cn",
+          "domain:gstatic.com"
+        ]
+      },
+      {
+        "address": "223.5.5.5",
+        "skipFallback": true,
+        "domains": [
+          "geosite:cn"
+        ],
+        "expectIPs": [
+          "geoip:cn"
+        ]
+      },
+      "1.1.1.1",
+      "8.8.8.8",
+      "https://dns.google/dns-query"
+    ]
+  },
+  "inbounds": [
+    {
+      "tag": "socks",
+      "port": 10808,
+      "listen": "127.0.0.1",
+      "protocol": "mixed",
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ],
+        "routeOnly": false
+      },
+      "settings": {
+        "auth": "noauth",
+        "udp": true,
+        "allowTransparent": false
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "proxy-1",
+      "protocol": "socks",
+      "settings": {
+        "servers": [
+          {
+            "address": "'"$SELECTED_IP"'",
+            "ota": false,
+            "port": '"$SELECTED_PORT"',
+            "level": 1,
+            "users": [
+              {
+                "user": "'"$username"'",
+                "pass": "'"$password"'",
+                "level": 1
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp"
+      },
+      "mux": {
+        "enabled": false,
+        "concurrency": -1
+      }
+    },
+    {
+      "tag": "direct",
+      "protocol": "freedom"
+    },
+    {
+      "tag": "block",
+      "protocol": "blackhole"
+    }
+  ],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api"
+      },
+      {
+        "type": "field",
+        "balancerTag": "proxy-round",
+        "domain": [
+          "domain:googleapis.cn",
+          "domain:gstatic.com",
+          "*.telegram.org",
+          "*.t.me",
+          "*.telegram.me"
+        ]
+      },
+      {
+        "type": "field",
+        "port": "443",
+        "network": "udp",
+        "outboundTag": "block"
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "ip": [
+          "geoip:private"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "domain": [
+          "geosite:private"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "ip": [
+          "223.5.5.5",
+          "223.6.6.6",
+          "2400:3200::1",
+          "2400:3200:baba::1",
+          "119.29.29.29",
+          "1.12.12.12",
+          "120.53.53.53",
+          "2402:4e00::",
+          "2402:4e00:1::",
+          "180.76.76.76",
+          "2400:da00::6666",
+          "114.114.114.114",
+          "114.114.115.115",
+          "114.114.114.119",
+          "114.114.115.119",
+          "114.114.114.110",
+          "114.114.115.110",
+          "180.184.1.1",
+          "180.184.2.2",
+          "101.226.4.6",
+          "218.30.118.6",
+          "123.125.81.6",
+          "140.207.198.6",
+          "1.2.4.8",
+          "210.2.4.8",
+          "52.80.66.66",
+          "117.50.22.22",
+          "2400:7fc0:849e:200::4",
+          "2404:c2c0:85d8:901::4",
+          "117.50.10.10",
+          "52.80.52.52",
+          "2400:7fc0:849e:200::8",
+          "2404:c2c0:85d8:901::8",
+          "117.50.60.30",
+          "52.80.60.30"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "domain": [
+          "domain:alidns.com",
+          "domain:doh.pub",
+          "domain:dot.pub",
+          "domain:360.cn",
+          "domain:onedns.net"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "ip": [
+          "geoip:cn"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "domain": [
+          "geosite:cn"
+        ]
+      },
+      {
+        "type": "field",
+        "network": "tcp,udp",
+        "balancerTag": "proxy-round"
+      }
+    ],
+    "balancers": [
+      {
+        "selector": [
+          "proxy"
+        ],
+        "strategy": {
+          "type": "random"
+        },
+        "tag": "proxy-round"
+      }
+    ]
+  }
+}'
+    
+    echo "$config_content" > "$CONFIG_DIR/$username"
+    return 0
+}
+
+# Function to add single user
+add_single_user() {
+    print_header
+    print_section_header "Add Single User"
+    
+    while true; do
+        read -p "$(echo -e "${YELLOW}❯${NC} Enter username: ")" username
+        if [[ -n "$username" && "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            if id "$username" &>/dev/null; then
+                print_error "User '$username' already exists!"
+            else
+                break
+            fi
+        else
+            print_error "Invalid username. Use only letters, numbers, underscore and dash."
+        fi
+    done
+    
+    while true; do
+        read -s -p "$(echo -e "${YELLOW}❯${NC} Enter password: ")" password
+        echo
+        if [[ ${#password} -ge 4 ]]; then
+            read -s -p "$(echo -e "${YELLOW}❯${NC} Confirm password: ")" password2
+            echo
+            if [[ "$password" == "$password2" ]]; then
+                break
+            else
+                print_error "Passwords don't match!"
+            fi
+        else
+            print_error "Password must be at least 4 characters long!"
+        fi
+    done
+    
+    echo
+    print_color $YELLOW "Creating user..."
+    
+    # Create user
+    if useradd -r -s /bin/false "$username"; then
+        echo "$username:$password" | chpasswd
+        create_user_config "$username" "$password"
+        print_success "User '$username' created successfully!"
+        print_success "Config file created: $CONFIG_DIR/$username"
+    else
+        print_error "Failed to create user '$username'!"
+    fi
+    
+    echo
+    read -p "Press Enter to continue..."
+}
+
+# Function to add multiple users
+add_multi_users() {
+    print_header
+    print_section_header "Add Multiple Users"
+    
+    # Read usernames using multiline input
+    local usernames_input
+    usernames_input=$(read_multiline_input "Enter usernames (one per line):")
+    
+    if [[ -z "$usernames_input" ]]; then
+        print_error "No usernames provided!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Parse usernames
+    local usernames=()
+    while IFS= read -r username; do
+        if [[ -n "$username" && "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            if id "$username" &>/dev/null; then
+                print_error "User '$username' already exists! Skipping..."
+            else
+                usernames+=("$username")
+            fi
+        else
+            print_error "Invalid username '$username'. Skipping..."
+        fi
+    done <<< "$usernames_input"
+    
+    if [[ ${#usernames[@]} -eq 0 ]]; then
+        print_error "No valid usernames provided!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    echo
+    print_info_box "Creating ${#usernames[@]} users..."
+    echo
+    
+    # Create users and set passwords
+    local created_users=()
+    for username in "${usernames[@]}"; do
+        echo -e "${CYAN}Setting up user: ${WHITE}$username${NC}"
+        
+        while true; do
+            read -s -p "$(echo -e "${YELLOW}❯${NC} Set password for '$username': ")" password
+            echo
+            if [[ ${#password} -ge 4 ]]; then
+                read -s -p "$(echo -e "${YELLOW}❯${NC} Confirm password for '$username': ")" password2
+                echo
+                if [[ "$password" == "$password2" ]]; then
+                    if useradd -r -s /bin/false "$username"; then
+                        echo "$username:$password" | chpasswd
+                        create_user_config "$username" "$password"
+                        created_users+=("$username")
+                        print_success "User '$username' created successfully!"
+                    else
+                        print_error "Failed to create user '$username'!"
+                    fi
+                    break
+                else
+                    print_error "Passwords don't match for '$username'!"
+                fi
+            else
+                print_error "Password for '$username' must be at least 4 characters long!"
+            fi
+        done
+        echo
+    done
+    
+    echo
+    print_success "Successfully created ${#created_users[@]} users!"
+    print_success "Config files created in: $CONFIG_DIR/"
+    
+    echo
+    read -p "Press Enter to continue..."
+}
+
+# Function to manage user addition
+manage_add_users() {
+    while true; do
+        print_header
+        print_section_header "Add Users Menu"
+        
+        echo -e "${CYAN}1.${NC} Add single user"
+        echo -e "${CYAN}2.${NC} Add multiple users"
+        echo -e "${CYAN}3.${NC} Back to main menu"
+        echo
+        
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-3]: ")" choice
+        
+        case $choice in
+            1) add_single_user ;;
+            2) add_multi_users ;;
+            3) break ;;
+            *) print_error "Invalid option!" ;;
+        esac
+    done
+}
+
+# Function to delete users
+delete_users() {
+    print_header
+    print_section_header "Delete Users"
+    
+    local users=()
+    while IFS= read -r user; do
+        if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
+            users+=("$user")
+        fi
+    done < <(getent passwd | grep '/bin/false' | cut -d: -f1 | sort)
+    
+    if [[ ${#users[@]} -eq 0 ]]; then
+        print_warning "No SOCKS5 users found to delete."
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    echo -e "${CYAN}╭─ Available Users to Delete ─────────────────────────────────────────────────╮${NC}"
+    for i in "${!users[@]}"; do
+        printf "${CYAN}│${NC} %3d. %-20s%*s${CYAN}│${NC}\n" $((i+1)) "${users[i]}" $((50 - ${#users[i]})) ""
+    done
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    
+    echo
+    print_info_box "Enter user numbers to delete (space-separated, e.g., '1 3 5'):"
+    read -p "$(echo -e "${YELLOW}❯${NC} Selection: ")" selections
+    
+    if [[ -z "$selections" ]]; then
+        print_warning "No selection made."
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    local to_delete=()
+    for selection in $selections; do
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [[ $selection -ge 1 ]] && [[ $selection -le ${#users[@]} ]]; then
+            to_delete+=("${users[$((selection-1))]}")
+        else
+            print_error "Invalid selection: $selection"
+        fi
+    done
+    
+    if [[ ${#to_delete[@]} -eq 0 ]]; then
+        print_error "No valid users selected!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    echo
+    print_warning "Users to be deleted:"
+    for user in "${to_delete[@]}"; do
+        echo -e "  ${RED}•${NC} $user"
+    done
+    
+    echo
+    read -p "$(echo -e "${RED}❯${NC} Are you sure you want to delete these users? (y/N): ")" confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        print_warning "Operation cancelled."
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    echo
+    print_color $YELLOW "Deleting users..."
+    
+    # Delete users
+    local deleted_count=0
+    for user in "${to_delete[@]}"; do
+        if userdel "$user" 2>/dev/null; then
+            # Remove config file
+            rm -f "$CONFIG_DIR/$user"
+            print_success "Deleted user: $user"
+            ((deleted_count++))
+        else
+            print_error "Failed to delete user: $user"
+        fi
+    done
+    
+    echo
+    print_success "Successfully deleted $deleted_count users!"
+    
+    echo
+    read -p "Press Enter to continue..."
+}
+
+# Function to test proxies
+test_proxies() {
+    print_header
+    print_section_header "Test Proxies"
+    
+    # Read proxy list using multiline input
+    local proxies_input
+    proxies_input=$(read_multiline_input "Enter proxy details in format: IP:PORT:USERNAME:PASSWORD")
+    
+    if [[ -z "$proxies_input" ]]; then
+        print_error "No proxies provided!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Parse proxies
+    local proxies=()
+    while IFS= read -r proxy_line; do
+        if [[ -n "$proxy_line" && "$proxy_line" =~ ^[^:]+:[0-9]+:[^:]+:[^:]+$ ]]; then
+            proxies+=("$proxy_line")
+        else
+            print_error "Invalid format: $proxy_line (Expected: IP:PORT:USERNAME:PASSWORD)"
+        fi
+    done <<< "$proxies_input"
+    
+    if [[ ${#proxies[@]} -eq 0 ]]; then
+        print_error "No valid proxies provided!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    echo
+    print_info_box "Testing ${#proxies[@]} proxies..."
+    echo
+    
+    local success_count=0
+    local total_count=${#proxies[@]}
+    
+    # Progress header
+    echo -e "${CYAN}╭─ Proxy Test Results ────────────────────────────────────────────────────────╮${NC}"
+    
+    for i in "${!proxies[@]}"; do
+        local proxy="${proxies[i]}"
+        IFS=':' read -r ip port user pass <<< "$proxy"
+        
+        local curl_proxy="socks5://$user:$pass@$ip:$port"
+        
+        # Test with timeout
+        printf "${CYAN}│${NC} [%2d/%2d] %-20s " $((i+1)) $total_count "${ip}:${port}@${user}"
+        
+        if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
+            printf "${GREEN}✓ SUCCESS${NC}%*s${CYAN}│${NC}\n" $((35 - ${#ip} - ${#port} - ${#user})) ""
+            ((success_count++))
+        else
+            printf "${RED}✗ FAILED${NC}%*s${CYAN}│${NC}\n" $((36 - ${#ip} - ${#port} - ${#user})) ""
+        fi
+    done
+    
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    
+    echo
+    local success_rate=$((success_count * 100 / total_count))
+    
+    echo -e "${CYAN}╭─ Test Summary ──────────────────────────────────────────────────────────────╮${NC}"
+    printf "${CYAN}│${NC} Total Proxies:   ${WHITE}%-10d${NC}%*s${CYAN}│${NC}\n" $total_count $((60 - ${#total_count})) ""
+    printf "${CYAN}│${NC} Successful:      ${GREEN}%-10d${NC}%*s${CYAN}│${NC}\n" $success_count $((60 - ${#success_count})) ""
+    printf "${CYAN}│${NC} Failed:          ${RED}%-10d${NC}%*s${CYAN}│${NC}\n" $((total_count - success_count)) $((60 - ${#total_count} - ${#success_count})) ""
+    printf "${CYAN}│${NC} Success Rate:    ${YELLOW}%-10s${NC}%*s${CYAN}│${NC}\n" "${success_rate}%" $((60 - ${#success_rate})) ""
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     
     echo
     read -p "Press Enter to continue..."
@@ -203,562 +1009,138 @@ EOF
 # Function to uninstall Danted
 uninstall_danted() {
     print_header
-    print_color $WHITE "Uninstalling Danted SOCKS5 Proxy Server"
-    echo
+    print_section_header "Uninstall Danted"
     
-    print_color $YELLOW "This will completely remove Danted and all configurations."
-    read -p "Are you sure? (y/N): " confirm
+    echo -e "${RED}╭─ WARNING ───────────────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${RED}│${NC} This will completely remove Danted and all configurations!                  ${RED}│${NC}"
+    echo -e "${RED}│${NC} All proxy users and config files will be affected.                         ${RED}│${NC}"
+    echo -e "${RED}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    
+    echo
+    read -p "$(echo -e "${RED}❯${NC} Are you sure you want to uninstall Danted? (y/N): ")" confirm
+    
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        print_color $YELLOW "Uninstallation cancelled."
+        print_warning "Operation cancelled."
         read -p "Press Enter to continue..."
         return
     fi
     
+    echo
+    print_color $YELLOW "Uninstalling Danted..."
+    
     # Stop and disable service
-    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        print_color $YELLOW "Stopping Danted service..."
-        systemctl stop $DANTED_SERVICE
-        systemctl disable $DANTED_SERVICE
-    fi
+    echo -e "${GRAY}Stopping service...${NC}"
+    systemctl stop $DANTED_SERVICE 2>/dev/null
+    systemctl disable $DANTED_SERVICE 2>/dev/null
     
     # Remove package
-    print_color $YELLOW "Removing dante-server package..."
+    echo -e "${GRAY}Removing package...${NC}"
     apt remove --purge -y dante-server >/dev/null 2>&1
     
     # Remove configuration files
-    print_color $YELLOW "Removing configuration files..."
-    [[ -f "$DANTED_CONFIG" ]] && rm -f "$DANTED_CONFIG"
-    [[ -f "${DANTED_CONFIG}.backup"* ]] && rm -f "${DANTED_CONFIG}.backup"*
+    echo -e "${GRAY}Removing configuration files...${NC}"
+    rm -f "$DANTED_CONFIG"
+    rm -f /var/log/danted.log
     
-    # Remove log files
-    [[ -f "$DANTED_LOG" ]] && rm -f "$DANTED_LOG"
+    # Ask about user configs
+    if [[ -d "$CONFIG_DIR" ]] && [[ $(ls -A "$CONFIG_DIR" 2>/dev/null) ]]; then
+        echo
+        read -p "$(echo -e "${YELLOW}❯${NC} Do you want to remove all user config files in '$CONFIG_DIR'? (y/N): ")" remove_configs
+        if [[ "$remove_configs" =~ ^[Yy]$ ]]; then
+            rm -rf "$CONFIG_DIR"
+            print_success "User config files removed"
+        fi
+    fi
     
-    # Remove SOCKS users
-    print_color $YELLOW "Removing SOCKS users..."
+    # Ask about users
     local socks_users=()
     while IFS= read -r user; do
         if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
-            if [[ "$user" != "nobody" && "$user" != "daemon" ]]; then
-                socks_users+=("$user")
-            fi
+            socks_users+=("$user")
         fi
     done < <(getent passwd | grep '/bin/false' | cut -d: -f1)
     
-    for user in "${socks_users[@]}"; do
-        userdel "$user" 2>/dev/null && print_color $GREEN "Removed user: $user"
-    done
-    
-    # Clean up config files
-    [[ -d "$CONFIG_DIR" ]] && rm -rf "$CONFIG_DIR"
-    
-    systemctl daemon-reload
-    
-    print_color $GREEN "✓ Danted uninstalled successfully!"
-    echo
-    read -p "Press Enter to continue..."
-}
-
-# Service status display
-show_service_status() {
-    print_color $CYAN "=== Service Status ==="
-    
-    if systemctl is-active --quiet $DANTED_SERVICE; then
-        print_color $GREEN "Status: Active"
-        
-        # Get service info
-        local uptime=$(systemctl show -p ActiveEnterTimestamp $DANTED_SERVICE --value)
-        if [[ -n "$uptime" ]]; then
-            print_color $GREEN "Started: $uptime"
-        fi
-        
-        # Show listening ports
-        local listening_info
-        listening_info=$(ss -tuln | grep ":$SELECTED_PORT" 2>/dev/null || ss -tuln | grep danted 2>/dev/null)
-        if [[ -n "$listening_info" ]]; then
-            print_color $GREEN "Listening ports:"
-            echo "$listening_info" | while read -r line; do
-                echo "  $line"
+    if [[ ${#socks_users[@]} -gt 0 ]]; then
+        echo
+        print_warning "Found ${#socks_users[@]} SOCKS5 users:"
+        for user in "${socks_users[@]}"; do
+            echo -e "  ${YELLOW}•${NC} $user"
+        done
+        echo
+        read -p "$(echo -e "${YELLOW}❯${NC} Do you want to remove all SOCKS5 users? (y/N): ")" remove_users
+        if [[ "$remove_users" =~ ^[Yy]$ ]]; then
+            for user in "${socks_users[@]}"; do
+                userdel "$user" 2>/dev/null
+                print_success "Removed user: $user"
             done
         fi
-        
-        # Show connection count
-        local connections
-        connections=$(ss -tn 2>/dev/null | grep -c ":$SELECTED_PORT" 2>/dev/null || echo "0")
-        print_color $BLUE "Active connections: $connections"
-        
-        # Show process info
-        local pid=$(pgrep danted 2>/dev/null)
-        if [[ -n "$pid" ]]; then
-            print_color $BLUE "Process ID: $pid"
-        fi
-    else
-        print_color $RED "Status: Inactive"
-        
-        # Show recent errors if any
-        local errors
-        errors=$(journalctl -u $DANTED_SERVICE --no-pager -n 5 --since "1 hour ago" 2>/dev/null | grep -i error)
-        if [[ -n "$errors" ]]; then
-            print_color $RED "Recent errors:"
-            echo "$errors"
-        fi
-    fi
-}
-
-# Performance monitoring
-show_performance_stats() {
-    print_color $CYAN "=== Performance Statistics ==="
-    
-    # Check if service is running
-    if ! systemctl is-active --quiet $DANTED_SERVICE; then
-        print_color $RED "Danted service is not running"
-        return 1
     fi
     
-    # Memory usage
-    local pid=$(pgrep danted 2>/dev/null)
-    if [[ -n "$pid" ]]; then
-        print_color $BLUE "Memory Usage:"
-        ps -o pid,vsz,rss,pcpu,pmem,comm -p "$pid" 2>/dev/null | head -2
-        echo
-    fi
-    
-    # System load
-    print_color $BLUE "System Load:"
-    uptime
     echo
-    
-    # Network connections
-    print_color $BLUE "Network Connections:"
-    local port_info
-    if [[ -n "$SELECTED_PORT" ]]; then
-        port_info=$(ss -tn 2>/dev/null | grep ":$SELECTED_PORT")
-    else
-        port_info=$(ss -tn 2>/dev/null | grep danted)
-    fi
-    
-    if [[ -n "$port_info" ]]; then
-        echo "$port_info" | head -10
-    else
-        echo "No active connections found"
-    fi
-    echo
-    
-    # Log analysis
-    if [[ -f "$DANTED_LOG" ]]; then
-        local log_size=$(du -h "$DANTED_LOG" 2>/dev/null | cut -f1)
-        local log_lines=$(wc -l < "$DANTED_LOG" 2>/dev/null)
-        print_color $BLUE "Log Statistics:"
-        echo "  File size: $log_size"
-        echo "  Total lines: $log_lines"
-        
-        # Recent activity count
-        local recent_connections=$(grep -c "connect" "$DANTED_LOG" 2>/dev/null | tail -100 || echo "0")
-        echo "  Recent connections: $recent_connections"
-    else
-        print_color $YELLOW "Log file not found: $DANTED_LOG"
-    fi
-}
-
-# View logs function
-view_logs() {
-    print_color $CYAN "=== Danted Logs ==="
-    
-    if [[ ! -f "$DANTED_LOG" ]]; then
-        print_color $RED "Log file not found: $DANTED_LOG"
-        print_color $YELLOW "Checking system journal instead..."
-        journalctl -u $DANTED_SERVICE --no-pager -n 20
-        return 1
-    fi
-    
-    print_color $BLUE "Choose log view option:"
-    echo "1. View last 20 lines"
-    echo "2. View last 50 lines"
-    echo "3. Follow log (real-time)"
-    echo "4. Search in logs"
-    echo "5. View system journal"
-    
-    read -p "Select option (1-5): " log_choice
-    
-    case $log_choice in
-        1)
-            print_color $GREEN "Last 20 lines:"
-            tail -n 20 "$DANTED_LOG"
-            ;;
-        2)
-            print_color $GREEN "Last 50 lines:"
-            tail -n 50 "$DANTED_LOG"
-            ;;
-        3)
-            print_color $GREEN "Following log (Press Ctrl+C to stop):"
-            tail -f "$DANTED_LOG"
-            ;;
-        4)
-            read -p "Enter search term: " search_term
-            if [[ -n "$search_term" ]]; then
-                print_color $GREEN "Search results for '$search_term':"
-                grep -i "$search_term" "$DANTED_LOG" | tail -20
-            fi
-            ;;
-        5)
-            print_color $GREEN "System journal for danted:"
-            journalctl -u $DANTED_SERVICE --no-pager -n 30
-            ;;
-        *)
-            print_color $RED "Invalid option"
-            ;;
-    esac
-}
-
-# Service management functions
-restart_service() {
-    print_color $YELLOW "Restarting Danted service..."
-    if systemctl restart $DANTED_SERVICE; then
-        sleep 2
-        if systemctl is-active --quiet $DANTED_SERVICE; then
-            print_color $GREEN "✓ Service restarted successfully"
-            show_service_status
-        else
-            print_color $RED "✗ Service failed to start after restart"
-            journalctl -u $DANTED_SERVICE --no-pager -n 10
-        fi
-    else
-        print_color $RED "Failed to restart service"
-    fi
-}
-
-stop_service() {
-    print_color $YELLOW "Stopping Danted service..."
-    if systemctl stop $DANTED_SERVICE; then
-        print_color $GREEN "✓ Service stopped successfully"
-    else
-        print_color $RED "Failed to stop service"
-    fi
-}
-
-start_service() {
-    print_color $YELLOW "Starting Danted service..."
-    if systemctl start $DANTED_SERVICE; then
-        sleep 2
-        if systemctl is-active --quiet $DANTED_SERVICE; then
-            print_color $GREEN "✓ Service started successfully"
-            show_service_status
-        else
-            print_color $RED "✗ Service failed to start"
-            journalctl -u $DANTED_SERVICE --no-pager -n 10
-        fi
-    else
-        print_color $RED "Failed to start service"
-    fi
-}
-
-# Service configuration menu
-service_config_menu() {
-    while true; do
-        clear
-        print_color $CYAN "================================================================"
-        print_color $CYAN "              DANTED SERVICE CONFIGURATION"
-        print_color $CYAN "================================================================"
-        echo
-        print_color $WHITE "1. Show Service Status"
-        print_color $WHITE "2. Start Service"
-        print_color $WHITE "3. Stop Service"
-        print_color $WHITE "4. Restart Service"
-        print_color $WHITE "5. Performance Stats"
-        print_color $WHITE "6. View Logs"
-        print_color $WHITE "7. Enable Auto-start"
-        print_color $WHITE "8. Disable Auto-start"
-        print_color $WHITE "0. Back to Main Menu"
-        echo
-        
-        read -p "Select option: " service_choice
-        
-        case $service_choice in
-            1) show_service_status ;;
-            2) start_service ;;
-            3) stop_service ;;
-            4) restart_service ;;
-            5) show_performance_stats ;;
-            6) view_logs ;;
-            7) 
-                systemctl enable $DANTED_SERVICE
-                print_color $GREEN "✓ Auto-start enabled"
-                ;;
-            8) 
-                systemctl disable $DANTED_SERVICE
-                print_color $YELLOW "✓ Auto-start disabled"
-                ;;
-            0) break ;;
-            *) print_color $RED "Invalid option" ;;
-        esac
-        
-        [[ $service_choice != 6 ]] && read -p "Press Enter to continue..."
-    done
-}
-
-# Function to show users
-show_users() {
-    print_header
-    print_color $WHITE "SOCKS5 Proxy Users"
-    echo
-    
-    local users=()
-    while IFS= read -r user; do
-        if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
-            if [[ "$user" != "nobody" && "$user" != "daemon" ]]; then
-                users+=("$user")
-            fi
-        fi
-    done < <(getent passwd | grep '/bin/false' | cut -d: -f1 | sort)
-    
-    if [[ ${#users[@]} -eq 0 ]]; then
-        print_color $YELLOW "No SOCKS5 users found."
-    else
-        print_color $GREEN "Found ${#users[@]} SOCKS5 users:"
-        echo
-        for i in "${!users[@]}"; do
-            printf "%3d. %s\n" $((i+1)) "${users[i]}"
-        done
-    fi
+    print_success "Danted has been completely uninstalled!"
     
     echo
     read -p "Press Enter to continue..."
 }
 
-# Function to load current configuration
-load_current_config() {
-    if [[ -f "$DANTED_CONFIG" ]]; then
-        SELECTED_IP=$(grep "^internal:" "$DANTED_CONFIG" 2>/dev/null | awk '{print $2}' | head -1)
-        SELECTED_PORT=$(grep "^internal:" "$DANTED_CONFIG" 2>/dev/null | awk -F'=' '{print $2}' | tr -d ' ' | head -1)
-    fi
-}
-
-# Function to create config file for user
-create_user_config() {
-    local username=$1
-    local password=$2
-    
-    # Load current config if not set
-    if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
-        load_current_config
-    fi
-    
-    if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
-        print_color $RED "Error: Server IP and port not configured. Please install Danted first."
-        return 1
-    fi
-    
-    # Create user configuration file
-    cat > "$CONFIG_DIR/${username}_config.txt" << EOF
-# SOCKS5 Proxy Configuration for user: $username
-# Generated on: $(date)
-
-Server: $SELECTED_IP
-Port: $SELECTED_PORT
-Username: $username
-Password: $password
-Protocol: SOCKS5
-
-# Usage examples:
-# curl -x socks5://$username:$password@$SELECTED_IP:$SELECTED_PORT https://httpbin.org/ip
-# proxychains4 -f /path/to/proxychains.conf your_command
-
-# Browser Configuration:
-# Proxy Type: SOCKS5
-# Proxy Host: $SELECTED_IP
-# Proxy Port: $SELECTED_PORT
-# Username: $username
-# Password: $password
-EOF
-    
-    print_color $GREEN "✓ Configuration saved to: $CONFIG_DIR/${username}_config.txt"
-}
-
-# Function to add user
-add_user() {
+# Main menu function
+show_main_menu() {
     print_header
-    print_color $WHITE "Add New SOCKS5 User"
-    echo
+    print_section_header "Main Menu"
     
-    # Check if Danted is installed
-    if ! systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
-        print_color $RED "Danted is not installed. Please install it first."
-        read -p "Press Enter to continue..."
-        return
-    fi
-    
-    local username password
-    
-    # Get username
-    while true; do
-        read -p "Enter username: " username
-        if [[ -z "$username" ]]; then
-            print_color $RED "Username cannot be empty."
-            continue
-        fi
-        if [[ ! "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-            print_color $RED "Username can only contain letters, numbers, underscore and dash."
-            continue
-        fi
-        if id "$username" &>/dev/null; then
-            print_color $RED "User already exists."
-            continue
-        fi
-        break
-    done
-    
-    # Get password
-    while true; do
-        read -s -p "Enter password: " password
-        echo
-        if [[ ${#password} -lt 6 ]]; then
-            print_color $RED "Password must be at least 6 characters long."
-            continue
-        fi
-        read -s -p "Confirm password: " password_confirm
-        echo
-        if [[ "$password" != "$password_confirm" ]]; then
-            print_color $RED "Passwords do not match."
-            continue
-        fi
-        break
-    done
-    
-    # Create user
-    if useradd -r -s /bin/false "$username" && echo "$username:$password" | chpasswd; then
-        print_color $GREEN "✓ User '$username' created successfully!"
-        
-        # Create configuration file
-        create_user_config "$username" "$password"
-        
-        # Show user info
-        echo
-        print_color $CYAN "User Information:"
-        print_color $WHITE "Username: $username"
-        print_color $WHITE "Server: $SELECTED_IP:$SELECTED_PORT"
-        print_color $WHITE "Config file: $CONFIG_DIR/${username}_config.txt"
-    else
-        print_color $RED "✗ Failed to create user '$username'"
-    fi
-    
-    echo
-    read -p "Press Enter to continue..."
-}
-
-# Function to delete user
-delete_user() {
-    print_header
-    print_color $WHITE "Delete SOCKS5 User"
-    echo
-    
-    # Get list of SOCKS users
-    local users=()
-    while IFS= read -r user; do
-        if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
-            if [[ "$user" != "nobody" && "$user" != "daemon" ]]; then
-                users+=("$user")
-            fi
-        fi
-    done < <(getent passwd | grep '/bin/false' | cut -d: -f1 | sort)
-    
-    if [[ ${#users[@]} -eq 0 ]]; then
-        print_color $YELLOW "No SOCKS5 users found to delete."
-        read -p "Press Enter to continue..."
-        return
-    fi
-    
-    print_color $GREEN "Available users:"
-    for i in "${!users[@]}"; do
-        printf "%3d. %s\n" $((i+1)) "${users[i]}"
-    done
-    echo
-    
-    while true; do
-        read -p "Select user number to delete (0 to cancel): " choice
-        
-        if [[ "$choice" == "0" ]]; then
-            print_color $YELLOW "Operation cancelled."
-            read -p "Press Enter to continue..."
-            return
-        fi
-        
-        if [[ "$choice" =~ ^[0-9]+$ ]] && [[ $choice -ge 1 ]] && [[ $choice -le ${#users[@]} ]]; then
-            local username="${users[$((choice-1))]}"
-            
-            print_color $YELLOW "Are you sure you want to delete user '$username'?"
-            read -p "Type 'yes' to confirm: " confirm
-            
-            if [[ "$confirm" == "yes" ]]; then
-                if userdel "$username"; then
-                    print_color $GREEN "✓ User '$username' deleted successfully!"
-                    
-                    # Remove config file if exists
-                    if [[ -f "$CONFIG_DIR/${username}_config.txt" ]]; then
-                        rm -f "$CONFIG_DIR/${username}_config.txt"
-                        print_color $GREEN "✓ Configuration file removed"
-                    fi
-                else
-                    print_color $RED "✗ Failed to delete user '$username'"
-                fi
-            else
-                print_color $YELLOW "Operation cancelled."
-            fi
-            break
-        else
-            print_color $RED "Invalid selection. Please try again."
-        fi
-    done
-    
-    echo
-    read -p "Press Enter to continue..."
-}
-
-# Function to show main menu
-show_menu() {
-    print_header
-    print_color $WHITE "1. Install/Reinstall Danted"
-    print_color $WHITE "2. Uninstall Danted"
-    print_color $WHITE "3. Service Configuration"
-    print_color $WHITE "4. Show Users"
-    print_color $WHITE "5. Add User"
-    print_color $WHITE "6. Delete User"
-    print_color $WHITE "0. Exit"
+    echo -e "${CYAN}1.${NC} Install Danted SOCKS5 Proxy"
+    echo -e "${CYAN}2.${NC} Show Users"
+    echo -e "${CYAN}3.${NC} Add Users"
+    echo -e "${CYAN}4.${NC} Delete Users"
+    echo -e "${CYAN}5.${NC} Test Proxies"
+    echo -e "${CYAN}6.${NC} Check Status & Monitoring"
+    echo -e "${CYAN}7.${NC} Uninstall Danted"
+    echo -e "${CYAN}8.${NC} Exit"
     echo
 }
 
-# Main function
+# Main program loop
 main() {
-    # Load current configuration
-    load_current_config
+    # Check if running as root
+    if [[ $EUID -ne 0 ]]; then
+        print_error "This script must be run as root!"
+        print_warning "Please run: sudo $0"
+        exit 1
+    fi
+    
+    # Check for required commands
+    local required_commands=("curl" "netstat" "systemctl" "useradd" "userdel")
+    for cmd in "${required_commands[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            print_error "Required command '$cmd' not found!"
+            print_warning "Please install the required packages."
+            exit 1
+        fi
+    done
     
     while true; do
-        show_menu
-        read -p "Select option: " choice
+        show_main_menu
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-8]: ")" choice
         
         case $choice in
             1) install_danted ;;
-            2) uninstall_danted ;;
-            3) service_config_menu ;;
-            4) show_users ;;
-            5) add_user ;;
-            6) delete_user ;;
-            0) 
-                print_color $GREEN "Thank you for using Danted Manager!"
+            2) show_users ;;
+            3) manage_add_users ;;
+            4) delete_users ;;
+            5) test_proxies ;;
+            6) check_service_status ;;
+            7) uninstall_danted ;;
+            8) 
+                print_color $GREEN "Thank you for using Danted SOCKS5 Proxy Manager!"
                 exit 0
                 ;;
             *) 
-                print_color $RED "Invalid option. Please try again."
-                read -p "Press Enter to continue..."
+                print_error "Invalid option! Please select 1-8."
+                sleep 1
                 ;;
         esac
     done
 }
-
-# Check if running as root
-if [[ $EUID -ne 0 ]]; then
-    print_color $RED "This script must be run as root!"
-    print_color $YELLOW "Please run: sudo $0"
-    exit 1
-fi
 
 # Run main function
 main "$@"
