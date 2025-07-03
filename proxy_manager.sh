@@ -24,8 +24,13 @@ DANTED_SERVICE="danted"
 SELECTED_IP=""
 SELECTED_PORT=""
 
-# Create config directory if not exists
-mkdir -p "$CONFIG_DIR"
+# Create config directory if not exists with proper permissions
+if [[ ! -d "$CONFIG_DIR" ]]; then
+    mkdir -p "$CONFIG_DIR" 2>/dev/null || {
+        print_error "Failed to create config directory: $CONFIG_DIR"
+        exit 1
+    }
+fi
 
 # Function to print colored output
 print_color() {
@@ -1038,6 +1043,40 @@ test_proxies() {
         fi
         
         local curl_proxy="socks5://$user:$pass@$ip:$port"
+        
+        # Test with timeout
+        local display_proxy="${ip}:${port}@${user}"
+        if [[ ${#display_proxy} -gt 25 ]]; then
+            display_proxy="${display_proxy:0:22}..."
+        fi
+        
+        printf "${CYAN}│${NC} [%2d/%2d] %-25s " $((i+1)) $total_count "$display_proxy"
+        
+        if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
+            printf "${GREEN}✓ SUCCESS${NC}%*s${CYAN}│${NC}\n" $((40 - ${#display_proxy})) ""
+            ((success_count++))
+        else
+            printf "${RED}✗ FAILED${NC}%*s${CYAN}│${NC}\n" $((41 - ${#display_proxy})) ""
+        fi
+    done
+    
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    
+    echo
+    local success_rate=0
+    if [[ $total_count -gt 0 ]]; then
+        success_rate=$((success_count * 100 / total_count))
+    fi
+    
+    echo -e "${CYAN}╭─ Test Summary ──────────────────────────────────────────────────────────────╮${NC}"
+    printf "${CYAN}│${NC} Total Proxies:   ${WHITE}%-10d${NC}%*s${CYAN}│${NC}\n" $total_count $((60 - ${#total_count})) ""
+    printf "${CYAN}│${NC} Successful:      ${GREEN}%-10d${NC}%*s${CYAN}│${NC}\n" $success_count $((60 - ${#success_count})) ""
+    printf "${CYAN}│${NC} Failed:          ${RED}%-10d${NC}%*s${CYAN}│${NC}\n" $((total_count - success_count)) $((60 - ${#total_count} - ${#success_count})) ""
+    printf "${CYAN}│${NC} Success Rate:    ${YELLOW}%-10s${NC}%*s${CYAN}│${NC}\n" "${success_rate}%" $((60 - ${#success_rate})) ""
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    
+    echo
+    read -p "Press Enter to continue..."ip:$port"
         
         # Test with timeout
         local display_proxy="${ip}:${port}@${user}"
