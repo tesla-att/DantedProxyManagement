@@ -2,7 +2,6 @@
 
 # Danted SOCKS5 Proxy Manager v2.0
 # Professional script for managing SOCKS5 proxy server on Ubuntu
-# Enhanced with better UI, multi-line input handling, and system monitoring
 
 # Colors for output
 RED='\033[0;31m'
@@ -15,7 +14,7 @@ WHITE='\033[1;37m'
 GRAY='\033[0;37m'
 BOLD='\033[1m'
 DIM='\033[2m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Configuration variables
 DANTED_CONFIG="/etc/danted.conf"
@@ -24,10 +23,10 @@ DANTED_SERVICE="danted"
 SELECTED_IP=""
 SELECTED_PORT=""
 
-# Create config directory if not exists with proper permissions
+# Create config directory if not exists
 if [[ ! -d "$CONFIG_DIR" ]]; then
     mkdir -p "$CONFIG_DIR" 2>/dev/null || {
-        print_error "Failed to create config directory: $CONFIG_DIR"
+        echo -e "${RED}Failed to create config directory: $CONFIG_DIR${NC}"
         exit 1
     }
 fi
@@ -91,7 +90,6 @@ print_warning() {
 read_multiline_input() {
     local prompt=$1
     local items=()
-    local input=""
     local line_count=0
     
     print_color $YELLOW "$prompt"
@@ -219,30 +217,6 @@ check_service_status() {
     
     # System information
     get_system_info
-    echo
-    
-    # Network connections
-    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        echo -e "${CYAN}╭─ Active Connections ────────────────────────────────────────────────────────╮${NC}"
-        local connections=$(netstat -tn 2>/dev/null | grep ":$config_port " | wc -l)
-        printf "${CYAN}│${NC} Active SOCKS5 connections: ${GREEN}%-10s${NC}%*s${CYAN}│${NC}\n" "$connections" $((50 - ${#connections})) ""
-        echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
-        echo
-    fi
-    
-    # Recent logs
-    echo -e "${CYAN}╭─ Recent Service Logs ───────────────────────────────────────────────────────╮${NC}"
-    if journalctl -u $DANTED_SERVICE --no-pager -n 5 --since "1 hour ago" 2>/dev/null | grep -q "."; then
-        journalctl -u $DANTED_SERVICE --no-pager -n 5 --since "1 hour ago" 2>/dev/null | while read -r line; do
-            if [[ ${#line} -gt 75 ]]; then
-                line="${line:0:75}..."
-            fi
-            printf "${CYAN}│${NC} ${GRAY}%-75s${NC}${CYAN}│${NC}\n" "$line"
-        done
-    else
-        printf "${CYAN}│${NC} ${GRAY}%-75s${NC}${CYAN}│${NC}\n" "No recent logs found"
-    fi
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
     
     # Control options
@@ -395,11 +369,11 @@ install_danted() {
     
     # Create Danted configuration
     echo -e "${GRAY}Creating configuration...${NC}"
-    cat > "$DANTED_CONFIG" << EOF
+    cat > "$DANTED_CONFIG" << 'EOF'
 # Danted SOCKS5 Proxy Configuration
 logoutput: /var/log/danted.log
-internal: $SELECTED_IP port = $SELECTED_PORT
-external: $SELECTED_IP
+internal: SELECTED_IP_PLACEHOLDER port = SELECTED_PORT_PLACEHOLDER
+external: SELECTED_IP_PLACEHOLDER
 
 # Authentication methods
 socksmethod: username
@@ -417,6 +391,10 @@ socks pass {
     socksmethod: username
 }
 EOF
+    
+    # Replace placeholders
+    sed -i "s/SELECTED_IP_PLACEHOLDER/$SELECTED_IP/g" "$DANTED_CONFIG"
+    sed -i "s/SELECTED_PORT_PLACEHOLDER/$SELECTED_PORT/g" "$DANTED_CONFIG"
     
     # Enable and start service
     echo -e "${GRAY}Starting service...${NC}"
@@ -494,7 +472,7 @@ create_user_config() {
     fi
     
     # Create config content
-    local config_content=$(cat << EOF
+    cat > "$CONFIG_DIR/$username" << EOF
 {
   "log": {
     "loglevel": "warning"
@@ -714,10 +692,8 @@ create_user_config() {
   }
 }
 EOF
-)
     
-    # Write config file
-    if echo "$config_content" > "$CONFIG_DIR/$username" 2>/dev/null; then
+    if [[ $? -eq 0 ]]; then
         return 0
     else
         print_error "Failed to create config file for user: $username"
@@ -1067,67 +1043,6 @@ test_proxies() {
     if [[ $total_count -gt 0 ]]; then
         success_rate=$((success_count * 100 / total_count))
     fi
-    
-    echo -e "${CYAN}╭─ Test Summary ──────────────────────────────────────────────────────────────╮${NC}"
-    printf "${CYAN}│${NC} Total Proxies:   ${WHITE}%-10d${NC}%*s${CYAN}│${NC}\n" $total_count $((60 - ${#total_count})) ""
-    printf "${CYAN}│${NC} Successful:      ${GREEN}%-10d${NC}%*s${CYAN}│${NC}\n" $success_count $((60 - ${#success_count})) ""
-    printf "${CYAN}│${NC} Failed:          ${RED}%-10d${NC}%*s${CYAN}│${NC}\n" $((total_count - success_count)) $((60 - ${#total_count} - ${#success_count})) ""
-    printf "${CYAN}│${NC} Success Rate:    ${YELLOW}%-10s${NC}%*s${CYAN}│${NC}\n" "${success_rate}%" $((60 - ${#success_rate})) ""
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
-    
-    echo
-    read -p "Press Enter to continue..."ip:$port"
-        
-        # Test with timeout
-        local display_proxy="${ip}:${port}@${user}"
-        if [[ ${#display_proxy} -gt 25 ]]; then
-            display_proxy="${display_proxy:0:22}..."
-        fi
-        
-        printf "${CYAN}│${NC} [%2d/%2d] %-25s " $((i+1)) $total_count "$display_proxy"
-        
-        if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            printf "${GREEN}✓ SUCCESS${NC}%*s${CYAN}│${NC}\n" $((40 - ${#display_proxy})) ""
-            ((success_count++))
-        else
-            printf "${RED}✗ FAILED${NC}%*s${CYAN}│${NC}\n" $((41 - ${#display_proxy})) ""
-        fi
-    done
-    
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
-    
-    echo
-    local success_rate=0
-    if [[ $total_count -gt 0 ]]; then
-        success_rate=$((success_count * 100 / total_count))
-    fi
-    
-    echo -e "${CYAN}╭─ Test Summary ──────────────────────────────────────────────────────────────╮${NC}"
-    printf "${CYAN}│${NC} Total Proxies:   ${WHITE}%-10d${NC}%*s${CYAN}│${NC}\n" $total_count $((60 - ${#total_count})) ""
-    printf "${CYAN}│${NC} Successful:      ${GREEN}%-10d${NC}%*s${CYAN}│${NC}\n" $success_count $((60 - ${#success_count})) ""
-    printf "${CYAN}│${NC} Failed:          ${RED}%-10d${NC}%*s${CYAN}│${NC}\n" $((total_count - success_count)) $((60 - ${#total_count} - ${#success_count})) ""
-    printf "${CYAN}│${NC} Success Rate:    ${YELLOW}%-10s${NC}%*s${CYAN}│${NC}\n" "${success_rate}%" $((60 - ${#success_rate})) ""
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
-    
-    echo
-    read -p "Press Enter to continue..."
-}ip:$port"
-        
-        # Test with timeout
-        printf "${CYAN}│${NC} [%2d/%2d] %-20s " $((i+1)) $total_count "${ip}:${port}@${user}"
-        
-        if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            printf "${GREEN}✓ SUCCESS${NC}%*s${CYAN}│${NC}\n" $((35 - ${#ip} - ${#port} - ${#user})) ""
-            ((success_count++))
-        else
-            printf "${RED}✗ FAILED${NC}%*s${CYAN}│${NC}\n" $((36 - ${#ip} - ${#port} - ${#user})) ""
-        fi
-    done
-    
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
-    
-    echo
-    local success_rate=$((success_count * 100 / total_count))
     
     echo -e "${CYAN}╭─ Test Summary ──────────────────────────────────────────────────────────────╮${NC}"
     printf "${CYAN}│${NC} Total Proxies:   ${WHITE}%-10d${NC}%*s${CYAN}│${NC}\n" $total_count $((60 - ${#total_count})) ""
