@@ -87,20 +87,29 @@ read_multiline_input() {
     local prompt=$1
     local items=()
     local input=""
+    local line_count=0
     
     print_color $YELLOW "$prompt"
-    print_info_box "You can paste multiple lines at once. Press Ctrl+D or type 'END' to finish."
+    print_info_box "You can paste multiple lines at once. Enter empty line twice to finish."
     
-    echo -e "${GRAY}Enter data:${NC}"
+    echo -e "${GRAY}Enter data (empty line twice to finish):${NC}"
     
-    # Read input until EOF or "END"
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if [[ "$line" == "END" ]]; then
-            break
-        fi
-        if [[ -n "$line" ]]; then
-            items+=("$line")
-            print_color $GREEN "  ✓ $line"
+    local empty_count=0
+    while true; do
+        read -r line
+        
+        if [[ -z "$line" ]]; then
+            ((empty_count++))
+            if [[ $empty_count -ge 2 ]]; then
+                break
+            fi
+        else
+            empty_count=0
+            if [[ -n "$line" ]]; then
+                items+=("$line")
+                ((line_count++))
+                print_color $GREEN "  ✓ [$line_count] $line"
+            fi
         fi
     done
     
@@ -457,6 +466,15 @@ create_user_config() {
     local username=$1
     local password=$2
     
+    # Ensure config directory exists
+    if [[ ! -d "$CONFIG_DIR" ]]; then
+        mkdir -p "$CONFIG_DIR"
+        if [[ $? -ne 0 ]]; then
+            print_error "Failed to create config directory: $CONFIG_DIR"
+            return 1
+        fi
+    fi
+    
     if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
         # Try to get from existing config
         if [[ -f "$DANTED_CONFIG" ]]; then
@@ -471,7 +489,7 @@ create_user_config() {
     fi
     
     # Create config content
-    local config_content='
+    local config_content=$(cat << EOF
 {
   "log": {
     "loglevel": "warning"
@@ -533,14 +551,14 @@ create_user_config() {
       "settings": {
         "servers": [
           {
-            "address": "'"$SELECTED_IP"'",
+            "address": "$SELECTED_IP",
             "ota": false,
-            "port": '"$SELECTED_PORT"',
+            "port": $SELECTED_PORT,
             "level": 1,
             "users": [
               {
-                "user": "'"$username"'",
-                "pass": "'"$password"'",
+                "user": "$username",
+                "pass": "$password",
                 "level": 1
               }
             ]
@@ -689,10 +707,17 @@ create_user_config() {
       }
     ]
   }
-}'
+}
+EOF
+)
     
-    echo "$config_content" > "$CONFIG_DIR/$username"
-    return 0
+    # Write config file
+    if echo "$config_content" > "$CONFIG_DIR/$username" 2>/dev/null; then
+        return 0
+    else
+        print_error "Failed to create config file for user: $username"
+        return 1
+    fi
 }
 
 # Function to add single user
@@ -763,15 +788,25 @@ add_multi_users() {
     
     # Parse usernames
     local usernames=()
+    local line_num=0
     while IFS= read -r username; do
-        if [[ -n "$username" && "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-            if id "$username" &>/dev/null; then
-                print_error "User '$username' already exists! Skipping..."
+        ((line_num++))
+        # Skip empty lines
+        [[ -z "$username" ]] && continue
+        
+        # Trim whitespace
+        username=$(echo "$username" | xargs)
+        
+        if [[ -n "$username" ]]; then
+            if [[ "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+                if id "$username" &>/dev/null; then
+                    print_error "User '$username' already exists! Skipping..."
+                else
+                    usernames+=("$username")
+                fi
             else
-                usernames+=("$username")
+                print_error "Invalid username '$username' (line $line_num). Use only letters, numbers, underscore and dash. Skipping..."
             fi
-        else
-            print_error "Invalid username '$username'. Skipping..."
         fi
     done <<< "$usernames_input"
     
@@ -797,11 +832,19 @@ add_multi_users() {
                 read -s -p "$(echo -e "${YELLOW}❯${NC} Confirm password for '$username': ")" password2
                 echo
                 if [[ "$password" == "$password2" ]]; then
-                    if useradd -r -s /bin/false "$username"; then
-                        echo "$username:$password" | chpasswd
-                        create_user_config "$username" "$password"
-                        created_users+=("$username")
-                        print_success "User '$username' created successfully!"
+                    if useradd -r -s /bin/false "$username" 2>/dev/null; then
+                        if echo "$username:$password" | chpasswd 2>/dev/null; then
+                            if create_user_config "$username" "$password"; then
+                                created_users+=("$username")
+                                print_success "User '$username' created successfully!"
+                            else
+                                print_warning "User '$username' created but config file failed!"
+                                created_users+=("$username")
+                            fi
+                        else
+                            print_error "Failed to set password for user '$username'!"
+                            userdel "$username" 2>/dev/null
+                        fi
                     else
                         print_error "Failed to create user '$username'!"
                     fi
@@ -949,11 +992,22 @@ test_proxies() {
     
     # Parse proxies
     local proxies=()
+    local line_num=0
     while IFS= read -r proxy_line; do
-        if [[ -n "$proxy_line" && "$proxy_line" =~ ^[^:]+:[0-9]+:[^:]+:[^:]+$ ]]; then
-            proxies+=("$proxy_line")
-        else
-            print_error "Invalid format: $proxy_line (Expected: IP:PORT:USERNAME:PASSWORD)"
+        ((line_num++))
+        # Skip empty lines
+        [[ -z "$proxy_line" ]] && continue
+        
+        # Trim whitespace
+        proxy_line=$(echo "$proxy_line" | xargs)
+        
+        if [[ -n "$proxy_line" ]]; then
+            if [[ "$proxy_line" =~ ^[^:]+:[0-9]+:[^:]+:.+$ ]]; then
+                proxies+=("$proxy_line")
+            else
+                print_error "Invalid format on line $line_num: $proxy_line"
+                print_color $GRAY "  Expected: IP:PORT:USERNAME:PASSWORD"
+            fi
         fi
     done <<< "$proxies_input"
     
@@ -977,7 +1031,48 @@ test_proxies() {
         local proxy="${proxies[i]}"
         IFS=':' read -r ip port user pass <<< "$proxy"
         
+        # Validate extracted components
+        if [[ -z "$ip" || -z "$port" || -z "$user" || -z "$pass" ]]; then
+            printf "${CYAN}│${NC} [%2d/%2d] %-20s ${RED}✗ INVALID FORMAT${NC}%*s${CYAN}│${NC}\n" $((i+1)) $total_count "$proxy" $((30 - ${#proxy})) ""
+            continue
+        fi
+        
         local curl_proxy="socks5://$user:$pass@$ip:$port"
+        
+        # Test with timeout
+        local display_proxy="${ip}:${port}@${user}"
+        if [[ ${#display_proxy} -gt 25 ]]; then
+            display_proxy="${display_proxy:0:22}..."
+        fi
+        
+        printf "${CYAN}│${NC} [%2d/%2d] %-25s " $((i+1)) $total_count "$display_proxy"
+        
+        if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
+            printf "${GREEN}✓ SUCCESS${NC}%*s${CYAN}│${NC}\n" $((40 - ${#display_proxy})) ""
+            ((success_count++))
+        else
+            printf "${RED}✗ FAILED${NC}%*s${CYAN}│${NC}\n" $((41 - ${#display_proxy})) ""
+        fi
+    done
+    
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    
+    echo
+    local success_rate=0
+    if [[ $total_count -gt 0 ]]; then
+        success_rate=$((success_count * 100 / total_count))
+    fi
+    
+    echo -e "${CYAN}╭─ Test Summary ──────────────────────────────────────────────────────────────╮${NC}"
+    printf "${CYAN}│${NC} Total Proxies:   ${WHITE}%-10d${NC}%*s${CYAN}│${NC}\n" $total_count $((60 - ${#total_count})) ""
+    printf "${CYAN}│${NC} Successful:      ${GREEN}%-10d${NC}%*s${CYAN}│${NC}\n" $success_count $((60 - ${#success_count})) ""
+    printf "${CYAN}│${NC} Failed:          ${RED}%-10d${NC}%*s${CYAN}│${NC}\n" $((total_count - success_count)) $((60 - ${#total_count} - ${#success_count})) ""
+    printf "${CYAN}│${NC} Success Rate:    ${YELLOW}%-10s${NC}%*s${CYAN}│${NC}\n" "${success_rate}%" $((60 - ${#success_rate})) ""
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    
+    echo
+    read -p "Press Enter to continue..."
+}ip:$port"
         
         # Test with timeout
         printf "${CYAN}│${NC} [%2d/%2d] %-20s " $((i+1)) $total_count "${ip}:${port}@${user}"
