@@ -1058,9 +1058,11 @@ test_proxies() {
     
     echo
     
-    # Parse proxies with better validation
+    # Parse proxies with silent validation (no error messages)
     local proxies=()
     local line_num=0
+    local valid_count=0
+    local invalid_count=0
     
     # Process each line from input
     while IFS= read -r proxy_line; do
@@ -1100,27 +1102,31 @@ test_proxies() {
                     
                     if [[ "$is_duplicate" == false ]]; then
                         proxies+=("$proxy_line")
+                        ((valid_count++))
                         print_color $GREEN "  ✓ Valid: $proxy_line"
-                    else
-                        print_color $YELLOW "  ⚠ Duplicate proxy skipped: $proxy_line"
                     fi
                 else
-                    print_error "  Invalid port on line $line_num: $proxy_line"
+                    ((invalid_count++))
                 fi
             else
-                print_error "  Missing components on line $line_num: $proxy_line"
+                ((invalid_count++))
             fi
         else
-            print_error "  Invalid format on line $line_num: $proxy_line"
-            print_color $GRAY "    Expected format: IP:PORT:USERNAME:PASSWORD"
+            ((invalid_count++))
         fi
         
     done <<< "$proxies_input"
     
+    # Show summary instead of detailed errors
+    if [[ $invalid_count -gt 0 ]]; then
+        print_warning "Skipped $invalid_count invalid proxy entries"
+    fi
+    
     if [[ ${#proxies[@]} -eq 0 ]]; then
         print_error "No valid proxies provided!"
-        echo
-        print_color $YELLOW "Please check your proxy format and try again."
+        if [[ $invalid_count -gt 0 ]]; then
+            echo -e "${GRAY}Check proxy format: IP:PORT:USERNAME:PASSWORD${NC}"
+        fi
         read -p "Press Enter to continue..."
         return
     fi
