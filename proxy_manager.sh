@@ -614,7 +614,7 @@ show_users() {
         # Header with user count
         local header_title="Users List (${#users[@]} users)"
         local header_length=${#header_title}
-        local header_padding=$((69 - header_length))  # 78 - 6 (for "─ " and " ") = 69
+        local header_padding=$((78 - header_length))  # 78 - 6 (for "─ " and " ") = 69
         
         printf "${CYAN}╭─ %s" "$header_title"
         for ((i=0; i<$header_padding; i++)); do printf "─"; done
@@ -1477,7 +1477,7 @@ main() {
             7) uninstall_danted ;;
             8) 
                 # Thank you message with box formatting
-                echo -e "${GREEN}╭─ Thank You ───────────────────────────────────────────────────────────────────╮${NC}"
+                echo -e "${GREEN}╭─ Thank You ──────────────────────────────────────────────────────────────────╮${NC}"
                 local thank_msg="Thank you for using Danted SOCKS5 Proxy Manager!"
                 local thank_length=$((${#thank_msg} + 1))
                 local thank_padding=$((78 - thank_length))
