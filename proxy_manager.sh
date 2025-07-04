@@ -576,45 +576,45 @@ EOF
 show_users() {
     print_header
     print_section_header "SOCKS5 Proxy Users"
-    
+
     local users=()
     while IFS= read -r user; do
         if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
             users+=("$user")
         fi
     done < <(getent passwd | grep '/bin/false' | cut -d: -f1 | sort)
-    
+
     if [[ ${#users[@]} -eq 0 ]]; then
         # Empty state with proper box formatting
         echo -e "${CYAN}╭─ Users List (0 users) ────────────────────────────────────────────────────────╮${NC}"
         local warning_msg="No SOCKS5 users found."
-        local warning_length=${#warning_msg}
-        local warning_padding=$((76 - warning_length))  # 78 total - 2 for borders = 76
+        local warning_length=$((${#warning_msg} + 1))
+        local warning_padding=$((77 - warning_length))
         printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
         echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     else
         # Header with user count
         local header_title="Users List (${#users[@]} users)"
         local header_length=${#header_title}
-        local header_padding=$((73 - header_length))  # 78 - 5 (for "╭─ " and " ╮") = 73
-        
+        local header_padding=$((76 - header_length))  # 78 - 6 (for "─ " and " ") = 69
+
         printf "${CYAN}╭─ %s" "$header_title"
         for ((i=0; i<$header_padding; i++)); do printf "─"; done
         printf "╮${NC}\n"
-        
+
         # Display users with proper formatting
         for i in "${!users[@]}"; do
             local user_number=$(printf "%3d." $((i+1)))
             local user_display="$user_number ${users[i]}"
-            local user_length=${#user_display}
-            local user_padding=$((76 - user_length))  # 78 - 2 for borders = 76
-            
+            local user_length=$((${#user_display} + 1))  # +1 for leading space
+            local user_padding=$((78 - user_length))
+
             printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
         done
-        
+
         echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     fi
-    
+
     echo
     read -p "Press Enter to continue..."
 }
