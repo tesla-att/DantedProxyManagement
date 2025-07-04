@@ -146,8 +146,8 @@ get_network_interfaces() {
     local ips=()
     local counter=1
     
-    echo -e "${CYAN}╭─ Available Network Interfaces ──────────────────────────────────────────────╮${NC}"
-    
+    echo -e "${CYAN}╭─ Available Network Interfaces ───────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}${NC} ${WHITE}No.${NC} ${WHITE}Interface Name          ${WHITE}IP Address${NC}"
     while IFS= read -r line; do
         interface=$(echo "$line" | awk '{print $1}')
         ip=$(echo "$line" | awk '{print $2}')
@@ -197,7 +197,7 @@ get_system_info() {
     
     # Fixed width box - 77 characters total width
     echo -e "${CYAN}╭─ System Information ─────────────────────────────────────────────────────────╮${NC}"
-    
+
     # CPU Usage - fixed width formatting
     printf "${CYAN}${NC} CPU Usage:    ${GREEN}%-15s${NC}%*s${CYAN}${NC}\n" "${cpu_usage}%" $((58 - ${#cpu_usage})) ""
     
@@ -224,7 +224,12 @@ check_service_status() {
     
     # Service status - Fixed width box
     echo -e "${CYAN}╭─ Danted Service Status ──────────────────────────────────────────────────────╮${NC}"
-    
+    if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+        print_warning "Danted service is not running. Please start it first."
+        echo
+        read -p "Press Enter to continue..."
+        return
+    fi
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
         local status="RUNNING"
         local color=$GREEN
@@ -278,6 +283,13 @@ check_service_status() {
     
     # Recent logs - Fixed width
     echo -e "${CYAN}╭─ Recent Service Logs ────────────────────────────────────────────────────────╮${NC}"
+    if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+        print_warning "Danted service is not running. No logs available."
+        echo
+        read -p "Press Enter to continue..."
+        return
+    fi
+    echo -e "${CYAN}${NC} ${GRAY}Last 3 logs from the last hour:${NC}${CYAN}${NC}"
     if journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | grep -q "."; then
         journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | while read -r line; do
             # Truncate long log lines to fit in box
@@ -379,8 +391,11 @@ test_bandwidth() {
         local speed_mbps=$(echo "scale=2; $speed / 1024 / 1024 * 8" | bc 2>/dev/null || echo "0")
         
         print_success "Download speed: ${speed_mbps} Mbps"
+        print_info_box "Test completed in ${duration}s"
+
     else
         print_error "Bandwidth test failed!"
+        print_warning "Please check your internet connection."
     fi
     
     echo
@@ -390,16 +405,18 @@ test_bandwidth() {
 # Function to install Danted
 install_danted() {
     print_header
-    print_section_header "Install Danted SOCKS5 Proxy Server"
+    print_section_header "Install Danted SOCKS5 Proxy Server"    
     
     # Check if already installed
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
         print_warning "Danted is already installed and running."
+        echo -e "${YELLOW}You can reinstall it, but this will stop the current service.${NC}"
         read -p "$(echo -e "${YELLOW}❯${NC} Do you want to reinstall? (y/N): ")" reinstall
         if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
             return
         fi
         systemctl stop $DANTED_SERVICE 2>/dev/null
+        print_color $YELLOW "Stopping existing Danted service..."
     fi
     
     # Get network interface
@@ -419,6 +436,7 @@ install_danted() {
                 break
             else
                 print_error "Port $port is already in use. Please choose another port."
+                
             fi
         else
             print_error "Invalid port number. Please enter a number between 1-65535."
