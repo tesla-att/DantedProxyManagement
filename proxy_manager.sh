@@ -60,6 +60,101 @@ print_section_header() {
     echo
 }
 
+# Helper function để tính toán padding
+calculate_padding() {
+    local text="$1"
+    local total_width="${2:-78}"
+    local used_chars="${3:-2}"  # Default for borders │ │
+    
+    local text_length=${#text}
+    local available_space=$((total_width - used_chars))
+    local padding=$((available_space - text_length))
+    
+    echo $padding
+}
+
+# Helper function để build box với width tùy chỉnh
+build_box() {
+    local title="$1"
+    local width="${2:-78}"
+    local -n content_array=$3
+    local -n result_array=$4
+    
+    # Clear result array
+    result_array=()
+    
+    # Build header
+    local header_padding=$(calculate_padding "$title" $width 5)  # 5 for "╭─ " and " ╮"
+    local header_line="${CYAN}╭─ $title"
+    for ((i=0; i<header_padding; i++)); do
+        header_line+="─"
+    done
+    header_line+="╮${NC}"
+    result_array+=("$header_line")
+    
+    # Build content
+    for line in "${content_array[@]}"; do
+        local content_padding=$(calculate_padding "$line" $width 4)  # 4 for "│ " and " │"
+        local content_line="${CYAN}│${NC} $line"
+        printf -v spaces '%*s' $content_padding
+        content_line+="$spaces${CYAN}│${NC}"
+        result_array+=("$content_line")
+    done
+    
+    # Build footer
+    local footer_line="${CYAN}╰"
+    for ((i=0; i<width-2; i++)); do
+        footer_line+="─"
+    done
+    footer_line+="╯${NC}"
+    result_array+=("$footer_line")
+}
+
+# Helper function để tạo responsive box
+create_responsive_box() {
+    local title="$1"
+    local min_width="${2:-60}"
+    local max_width="${3:-100}"
+    local -n content_ref=$4
+    
+    # Tìm độ dài dòng dài nhất (loại bỏ ANSI color codes)
+    local max_content_length=0
+    for line in "${content_ref[@]}"; do
+        # Remove ANSI color codes để tính độ dài thực
+        local clean_line=$(echo "$line" | sed 's/\x1b\[[0-9;]*m//g')
+        if [[ ${#clean_line} -gt $max_content_length ]]; then
+            max_content_length=${#clean_line}
+        fi
+    done
+    
+    # Tính width tối ưu
+    local title_length=${#title}
+    local required_width=$((max_content_length + 4))  # +4 for "│ " and " │"
+    local header_width=$((title_length + 6))  # +6 for "╭─ " and " ╮"
+    
+    # Lấy width lớn nhất giữa content và header
+    local optimal_width=$required_width
+    if [[ $header_width -gt $optimal_width ]]; then
+        optimal_width=$header_width
+    fi
+    
+    # Clamp to min/max boundaries
+    if [[ $optimal_width -lt $min_width ]]; then
+        optimal_width=$min_width
+    elif [[ $optimal_width -gt $max_width ]]; then
+        optimal_width=$max_width
+    fi
+    
+    # Build box với width tối ưu
+    local box_lines=()
+    build_box "$title" $optimal_width content_ref box_lines
+    
+    # Display box
+    for line in "${box_lines[@]}"; do
+        echo -e "$line"
+    done
+}
+
 # Function to print info box
 print_info_box() {
     local message=$1
@@ -389,7 +484,7 @@ check_service_status() {
     echo
     
     while true; do
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-6]: ")" choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-4]: ")" choice
         
         case $choice in
             1)
@@ -578,42 +673,46 @@ show_users() {
     print_section_header "SOCKS5 Proxy Users"
     
     local users=()
+    local content_lines=()
+    
+    # Collect users
     while IFS= read -r user; do
         if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
             users+=("$user")
         fi
     done < <(getent passwd | grep '/bin/false' | cut -d: -f1 | sort)
     
+    # Build content array với formatting thông minh
     if [[ ${#users[@]} -eq 0 ]]; then
-        # Empty state with proper box formatting
-        echo -e "${CYAN}╭─ Users List (0 users) ────────────────────────────────────────────────────────╮${NC}"
-        local warning_msg="No SOCKS5 users found."
-        local warning_length=${#warning_msg}
-        local warning_padding=$((76 - warning_length))  # 78 total - 2 for borders = 76
-        printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
-        echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+        content_lines=("${YELLOW}No SOCKS5 users found.${NC}")
     else
-        # Header with user count
-        local header_title="Users List (${#users[@]} users)"
-        local header_length=${#header_title}
-        local header_padding=$((73 - header_length))  # 78 - 5 (for "╭─ " and " ╮") = 73
-        
-        printf "${CYAN}╭─ %s" "$header_title"
-        for ((i=0; i<$header_padding; i++)); do printf "─"; done
-        printf "╮${NC}\n"
-        
-        # Display users with proper formatting
-        for i in "${!users[@]}"; do
-            local user_number=$(printf "%3d." $((i+1)))
-            local user_display="$user_number ${users[i]}"
-            local user_length=${#user_display}
-            local user_padding=$((76 - user_length))  # 78 - 2 for borders = 76
-            
-            printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
+        # Tìm username dài nhất để align đẹp
+        local max_username_length=0
+        for user in "${users[@]}"; do
+            if [[ ${#user} -gt $max_username_length ]]; then
+                max_username_length=${#user}
+            fi
         done
         
-        echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+        # Format users với alignment
+        for i in "${!users[@]}"; do
+            local user_number=$(printf "%3d." $((i+1)))
+            local formatted_user=$(printf "%-${max_username_length}s" "${users[i]}")
+            content_lines+=("$user_number $formatted_user")
+        done
     fi
+    
+    # Auto-detect terminal size và set responsive limits
+    local terminal_width=$(tput cols 2>/dev/null || echo 80)
+    local min_width=40
+    local max_width=$((terminal_width > 120 ? 120 : terminal_width - 4))
+    
+    # Đảm bảo min_width không lớn hơn max_width
+    if [[ $min_width -gt $max_width ]]; then
+        min_width=$((max_width - 10))
+    fi
+    
+    create_responsive_box "Users List (${#users[@]} users)" $min_width $max_width content_lines
     
     echo
     read -p "Press Enter to continue..."
@@ -1035,7 +1134,7 @@ manage_add_users() {
     echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
         
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-3]: ")" choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-2]: ")" choice
         
         case $choice in
             1) add_single_user ;;
@@ -1470,7 +1569,7 @@ main() {
     
     while true; do
         show_main_menu
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-8]: ")" choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-7]: ")" choice
         
         case $choice in
             1) install_danted ;;
