@@ -1247,11 +1247,8 @@ test_proxies() {
     local success_count=0
     local total_count=${#proxies[@]}
     
-# Proxy test results with modern terminal style
-    echo
-    echo -e "${BLUE}${BOLD} PROXY TEST RESULTS${NC}"
-    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo
+# Proxy test results with proper box formatting
+    echo -e "${CYAN}─ Proxy Test Results ─────────────────────────────────────────────────────────${NC}"
 
     for i in "${!proxies[@]}"; do
         local proxy="${proxies[i]}"
@@ -1263,47 +1260,73 @@ test_proxies() {
         
         # Test with timeout
         local display_proxy="${ip}:${port}@${user}"
-        if [[ ${#display_proxy} -gt 35 ]]; then
-            display_proxy="${display_proxy:0:32}..."
+        if [[ ${#display_proxy} -gt 30 ]]; then
+            display_proxy="${display_proxy:0:27}..."
         fi
         
         # Create progress indicator
-        local progress_indicator=$(printf "%2d/%2d" $((i+1)) $total_count)
+        local progress_indicator=$(printf "[%2d/%2d]" $((i+1)) $total_count)
         
         # Test proxy first
         if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            local result_icon="${GREEN}✓${NC}"
-            local result_text="${GREEN}SUCCESS${NC}"
+            local result_text="${GREEN}✓ SUCCESS${NC}"
             ((success_count++))
         else
-            local result_icon="${RED}✗${NC}"
-            local result_text="${RED}FAILED${NC}"
+            local result_text="${RED}✗ FAILED${NC}"
         fi
         
-        # Print the formatted line with modern spacing
-        printf "  ${GRAY}[%s]${NC} %-35s ${result_icon} ${result_text}\n" \
-            "$progress_indicator" "$display_proxy"
+        # Calculate padding based on actual text length (không tính mã màu)
+        local progress_len=${#progress_indicator}
+        local proxy_len=${#display_proxy}
+        # Độ dài thực tế của result_text không tính mã màu
+        local result_len=8  # "✓ SUCCESS" hoặc "✗ FAILED" đều 8 ký tự
+        
+        # Total content: " " + progress + " " + proxy + " " + result + " "
+        local total_content_len=$((1 + progress_len + 1 + proxy_len + 1 + result_len + 1))
+        local padding=$((70 - total_content_len))
+        
+        # Print the formatted line
+        printf " %s %-30s %b%*s\n" \
+            "$progress_indicator" "$display_proxy" "$result_text" $padding ""
         
     done
 
+    echo -e "${CYAN}──────────────────────────────────────────────────────────────────────────────${NC}"
+    
     local success_rate=0
     if [[ $total_count -gt 0 ]]; then
         success_rate=$((success_count * 100 / total_count))
     fi
     
     echo
-    echo -e "${BLUE}${BOLD} TEST SUMMARY${NC}"
-    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo
+    echo -e "${CYAN}─ Test Summary ────────────────────────────────────────────────────────────────${NC}"
 
-    # Calculate failed count
+    # Total Proxies
+    local total_text="Total Proxies: $total_count"
+    local total_length=$((${#total_text} + 1))
+    local total_padding=$((78 - total_length))
+    printf " Total Proxies:   ${WHITE}%s${NC}%*s\n" "$total_count" $total_padding ""
+
+    # Successful
+    local success_text="Successful: $success_count"
+    local success_length=$((${#success_text} + 1))
+    local success_padding=$((78 - success_length))
+    printf " Successful:      ${GREEN}%s${NC}%*s\n" "$success_count" $success_padding ""
+
+    # Failed
     local failed_count=$((total_count - success_count))
-    
-    # Create summary with modern layout
-    printf "  ${WHITE}Total Proxies:${NC}   ${CYAN}%d${NC}\n" "$total_count"
-    printf "  ${WHITE}Successful:${NC}      ${GREEN}%d${NC}\n" "$success_count"
-    printf "  ${WHITE}Failed:${NC}          ${RED}%d${NC}\n" "$failed_count"
-    printf "  ${WHITE}Success Rate:${NC}    ${YELLOW}%d%%${NC}\n" "$success_rate"
+    local failed_text="Failed: $failed_count"
+    local failed_length=$((${#failed_text} + 1))
+    local failed_padding=$((78 - failed_length))
+    printf " Failed:          ${RED}%s${NC}%*s\n" "$failed_count" $failed_padding ""
+
+    # Success Rate
+    local rate_text="Success Rate: ${success_rate}%"
+    local rate_length=$((${#rate_text} + 1))
+    local rate_padding=$((78 - rate_length))
+    printf " Success Rate:    ${YELLOW}%s%%${NC}%*s\n" "$success_rate" $rate_padding ""
+
+    echo -e "${CYAN}──────────────────────────────────────────────────────────────────────────────${NC}"
     
     echo
     read -p "Press Enter to continue..."
