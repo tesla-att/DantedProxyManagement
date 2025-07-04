@@ -51,8 +51,11 @@ print_header() {
 # Function to print section header
 print_section_header() {
     local title=$1
+    local title_length=${#title}
+    local padding=$((76 - title_length))
+    
     echo -e "${BLUE}┌──────────────────────────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${BLUE}│${WHITE}${BOLD} $title${NC}${BLUE}$(printf "%*s" $((77 - ${#title})) "")│${NC}"
+    printf "${BLUE}│${WHITE}${BOLD} %s${NC}${BLUE}%*s│${NC}\n" "$title" $padding ""
     echo -e "${BLUE}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
@@ -61,23 +64,13 @@ print_section_header() {
 print_info_box() {
     local message=$1
     local color=${2:-$CYAN}
-    local width=78
     local msg_length=${#message}
-    local padding=$((width - msg_length - 1))
+    local padding=$((75 - msg_length))
     
-    # Tạo đường viền trên với "INFO"
-    printf "${color}┌─ INFO "
-    for ((i=0; i<$((width - 7)); i++)); do printf "─"; done
-    printf "┐${NC}\n"
-    
-    # Tạo dòng message với padding tự động
-    printf "${color}│ %s" "$message"
-    printf "%*s│${NC}\n" $padding ""
-    
-    # Tạo đường viền dưới
-    printf "${color}└"
-    for ((i=0; i<$width; i++)); do printf "─"; done
-    printf "┘${NC}\n"
+    echo -e "${color}┌─ INFO ───────────────────────────────────────────────────────────────────────┐${NC}"
+    printf "${color}│ %s%*s│${NC}\n" "$message" $padding ""
+    echo -e "${color}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo
 }
 
 # Function to print success message
