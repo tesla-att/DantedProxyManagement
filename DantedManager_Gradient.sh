@@ -1005,7 +1005,7 @@ add_single_user() {
         print_progress_header "Creating User" 2 3
         
         print_info "Creating config file..."
-        show_progress_animation 12 "Generating")
+        show_progress_animation 12 "Generating"
         create_user_config "$username" "$password"
         print_progress_header "Creating User" 3 3
         
@@ -1238,7 +1238,7 @@ delete_users() {
     echo
     read -p "$(echo -e "${RED}${FULL_BLOCK}${NC} Are you sure you want to delete these users? (y/N): ")" confirm
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        print_warning "Operation cancelled.")
+        print_warning "Operation cancelled."
         read -p "Press Enter to continue..."
         return
     fi
@@ -1251,7 +1251,7 @@ delete_users() {
     for i in "${!to_delete[@]}"; do
         local user="${to_delete[i]}"
         print_info "Deleting user: $user"
-        show_progress_animation 8 "Removing")
+        show_progress_animation 8 "Removing"
         
         if userdel "$user" 2>/dev/null; then
             rm -f "$CONFIG_DIR/$user"
@@ -1433,20 +1433,20 @@ uninstall_danted() {
     
     # Stop and disable service
     print_info "Stopping service..."
-    show_progress_animation 15 "Stopping")
+    show_progress_animation 15 "Stopping"
     systemctl stop $DANTED_SERVICE 2>/dev/null
     systemctl disable $DANTED_SERVICE 2>/dev/null
     print_progress_header "Uninstalling Danted" 1 4
     
     # Remove package
     print_info "Removing package..."
-    show_progress_animation 20 "Removing")
+    show_progress_animation 20 "Removing"
     apt remove --purge -y dante-server >/dev/null 2>&1
     print_progress_header "Uninstalling Danted" 2 4
     
     # Remove configuration files
-    print_info "Removing configuration files...")
-    show_progress_animation 10 "Cleaning")
+    print_info "Removing configuration files..."
+    show_progress_animation 10 "Cleaning"
     rm -f "$DANTED_CONFIG"
     rm -f /var/log/danted.log
     print_progress_header "Uninstalling Danted" 3 4
