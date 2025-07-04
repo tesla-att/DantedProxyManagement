@@ -169,7 +169,7 @@ get_network_interfaces() {
             # Format interface name and IP with fixed width
             local interface_padded=$(printf "%-20s" "$interface")
             local content_length=$((3 + 2 + 20 + 1 + ${#ip}))  # " XX. interface_name IP"
-            local padding=$((75 - content_length))
+            local padding=$((78 - content_length))
             
             printf "${CYAN}│${NC} %2d. %s ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" \
                 $counter "$interface_padded" "$ip" $padding ""
@@ -219,7 +219,7 @@ get_system_info() {
     # CPU Usage - fixed width formatting
     local cpu_display="${cpu_usage}%"
     local cpu_content_length=$((14 + ${#cpu_display}))  # " CPU Usage:    " + display
-    local cpu_padding=$((75 - cpu_content_length))
+    local cpu_padding=$((78 - cpu_content_length))
     printf "${CYAN}│${NC} CPU Usage:    ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$cpu_display" $cpu_padding ""
     
     # Memory - fixed width formatting  
@@ -228,17 +228,17 @@ get_system_info() {
         memory_display="${memory_used}/${memory_total}"
     fi
     local memory_content_length=$((14 + ${#memory_display}))  # " Memory:       " + display
-    local memory_padding=$((75 - memory_content_length))
+    local memory_padding=$((78 - memory_content_length))
     printf "${CYAN}│${NC} Memory:       ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$memory_display" $memory_padding ""
     
     # Disk Usage - fixed width formatting
     local disk_content_length=$((14 + ${#disk_usage}))  # " Disk Usage:   " + display
-    local disk_padding=$((75 - disk_content_length))
+    local disk_padding=$((78 - disk_content_length))
     printf "${CYAN}│${NC} Disk Usage:   ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$disk_usage" $disk_padding ""
 
     # Uptime - fixed width formatting
     local uptime_content_length=$((14 + ${#uptime_info}))  # " Uptime:       " + display
-    local uptime_padding=$((75 - uptime_content_length))
+    local uptime_padding=$((78 - uptime_content_length))
     printf "${CYAN}│${NC} Uptime:       ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$uptime_info" $uptime_padding ""
     
     # Footer with fixed width
@@ -256,7 +256,7 @@ check_service_status() {
     # Check if service is running first
     if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
         local warning_content_length=$((${#"Danted service is not running. Please start it first."} + 1))
-        local warning_padding=$((75 - warning_content_length))
+        local warning_padding=$((78 - warning_content_length))
         printf "${CYAN}│${NC} ${YELLOW}Danted service is not running. Please start it first.${NC}%*s${CYAN}│${NC}\n" $warning_padding ""
         echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
         echo
@@ -278,7 +278,7 @@ check_service_status() {
     # Service status line
     local service_display="${status_icon} ${status}"
     local service_content_length=$((14 + ${#service_display}))  # " Service:      " + display
-    local service_padding=$((75 - service_content_length))
+    local service_padding=$((78 - service_content_length))
     printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
     
     # Auto-start status
@@ -290,7 +290,7 @@ check_service_status() {
         local autostart_color=$RED
     fi
     local autostart_content_length=$((14 + ${#autostart_display}))  # " Auto-start:   " + display
-    local autostart_padding=$((75 - autostart_content_length))
+    local autostart_padding=$((78 - autostart_content_length))
     printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
     
     # Listen address
@@ -307,7 +307,7 @@ check_service_status() {
         local listen_address="Not configured"
     fi
     local listen_content_length=$((14 + ${#listen_address}))  # " Listen on:    " + display
-    local listen_padding=$((75 - listen_content_length))
+    local listen_padding=$((78 - listen_content_length))
     local listen_color=$([[ "$listen_address" == "Not configured" ]] && echo "$GRAY" || echo "$YELLOW")
     printf "${CYAN}│${NC} Listen on:    ${listen_color}%s${NC}%*s${CYAN}│${NC}\n" "$listen_address" $listen_padding ""
     
@@ -322,7 +322,7 @@ check_service_status() {
         local conn_color=$GRAY
     fi
     local conn_content_length=$((14 + ${#conn_display}))  # " Connections:  " + display
-    local conn_padding=$((75 - conn_content_length))
+    local conn_padding=$((78 - conn_content_length))
     printf "${CYAN}│${NC} Connections:  ${conn_color}%s${NC}%*s${CYAN}│${NC}\n" "$conn_display" $conn_padding ""
     
     echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
@@ -338,7 +338,7 @@ check_service_status() {
     if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
         local log_warning="Danted service is not running. No logs available."
         local log_warning_length=$((${#log_warning} + 1))
-        local log_warning_padding=$((75 - log_warning_length))
+        local log_warning_padding=$((78 - log_warning_length))
         printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$log_warning" $log_warning_padding ""
         echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
         echo
@@ -349,7 +349,7 @@ check_service_status() {
     # Log header
     local log_header="Last 3 logs from the last hour:"
     local log_header_length=$((${#log_header} + 1))
-    local log_header_padding=$((75 - log_header_length))
+    local log_header_padding=$((78 - log_header_length))
     printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$log_header" $log_header_padding ""
     
     # Display logs
@@ -360,13 +360,13 @@ check_service_status() {
                 line="${line:0:70}..."
             fi
             local line_length=$((${#line} + 1))
-            local line_padding=$((75 - line_length))
+            local line_padding=$((78 - line_length))
             printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$line" $line_padding ""
         done
     else
         local no_logs="No recent logs found"
         local no_logs_length=$((${#no_logs} + 1))
-        local no_logs_padding=$((75 - no_logs_length))
+        local no_logs_padding=$((78 - no_logs_length))
         printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$no_logs" $no_logs_padding ""
     fi
     
@@ -387,7 +387,7 @@ check_service_status() {
 
     for item in "${control_items[@]}"; do
         local item_length=$((${#item} + 1))  # +1 for leading space
-        local item_padding=$((75 - item_length))
+        local item_padding=$((8 - item_length))
         printf "${YELLOW}│${NC} ${CYAN}%s${NC}%*s${YELLOW}│${NC}\n" "$item" $item_padding ""
     done
 
@@ -606,14 +606,14 @@ show_users() {
         echo -e "${CYAN}╭─ Users List (0 users) ───────────────────────────────────────────────────────╮${NC}"
         local warning_msg="No SOCKS5 users found."
         local warning_length=$((${#warning_msg} + 1))
-        local warning_padding=$((75 - warning_length))
+        local warning_padding=$((78 - warning_length))
         printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
         echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     else
         # Header with user count
         local header_title="Users List (${#users[@]} users)"
         local header_length=${#header_title}
-        local header_padding=$((69 - header_length))  # 75 - 6 (for "─ " and " ") = 69
+        local header_padding=$((69 - header_length))  # 78 - 6 (for "─ " and " ") = 69
         
         printf "${CYAN}╭─ %s" "$header_title"
         for ((i=0; i<$header_padding; i++)); do printf "─"; done
@@ -624,7 +624,7 @@ show_users() {
             local user_number=$(printf "%3d." $((i+1)))
             local user_display="$user_number ${users[i]}"
             local user_length=$((${#user_display} + 1))  # +1 for leading space
-            local user_padding=$((75 - user_length))
+            local user_padding=$((78 - user_length))
             
             printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
         done
@@ -1045,7 +1045,7 @@ manage_add_users() {
 
     for item in "${add_user_items[@]}"; do
         local item_length=$((${#item} + 1))  # +1 for leading space
-        local item_padding=$((75 - item_length))
+        local item_padding=$((8 - item_length))
         printf "${CYAN}│${NC} ${CYAN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
     done
 
@@ -1086,7 +1086,7 @@ delete_users() {
         local user_number=$(printf "%3d." $((i+1)))
         local user_display="$user_number ${users[i]}"
         local user_length=$((${#user_display} + 1))  # +1 for leading space
-        local user_padding=$((75 - user_length))
+        local user_padding=$((78 - user_length))
         
         printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
     done
@@ -1294,7 +1294,7 @@ test_proxies() {
         
         # Calculate padding for result
         local content_length=$((${#progress_indicator} + 1 + 30 + 1))  # progress + space + proxy + space
-        local result_padding=$((75 - content_length - 9))  # 9 for "✓ SUCCESS" or "✗ FAILED  "
+        local result_padding=$((78 - content_length - 9))  # 9 for "✓ SUCCESS" or "✗ FAILED  "
         
         printf "%*s%s${CYAN}│${NC}\n" $result_padding "" "$result"
     done
@@ -1327,13 +1327,13 @@ uninstall_danted() {
     # First warning line
     local warning1="This will completely remove Danted and all configurations!"
     local warning1_length=$((${#warning1} + 1))
-    local warning1_padding=$((75 - warning1_length))
+    local warning1_padding=$((78 - warning1_length))
     printf "${RED}│${NC} %s%*s${RED}│${NC}\n" "$warning1" $warning1_padding ""
 
     # Second warning line
     local warning2="All proxy users and config files will be affected."
     local warning2_length=$((${#warning2} + 1))
-    local warning2_padding=$((75 - warning2_length))
+    local warning2_padding=$((78 - warning2_length))
     printf "${RED}│${NC} %s%*s${RED}│${NC}\n" "$warning2" $warning2_padding ""
 
     echo -e "${RED}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
@@ -1412,7 +1412,7 @@ show_main_menu() {
     print_section_header "Main Menu"
     
     # Menu box with rounded corners
-    echo -e "${CYAN}╭─ Menu Options ────────────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}╭─ Menu Options ───────────────────────────────────────────────────────────────╮${NC}"
     
     # Menu items with proper padding
     local menu_items=(
@@ -1428,7 +1428,7 @@ show_main_menu() {
     
     for item in "${menu_items[@]}"; do
         local item_length=$((${#item} + 1))  # +1 for leading space
-        local item_padding=$((75 - item_length))
+        local item_padding=$((78 - item_length))
         printf "${CYAN}│${NC} ${CYAN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
     done
     
@@ -1468,7 +1468,14 @@ main() {
             6) check_service_status ;;
             7) uninstall_danted ;;
             8) 
-                print_color $GREEN "Thank you for using Danted SOCKS5 Proxy Manager!"
+                # Thank you message with box formatting
+                echo -e "${GREEN}╭─ Thank You ───────────────────────────────────────────────────────────────────╮${NC}"
+                local thank_msg="Thank you for using Danted SOCKS5 Proxy Manager!"
+                local thank_length=$((${#thank_msg} + 1))
+                local thank_padding=$((78 - thank_length))
+                printf "${GREEN}│${NC} %s%*s${GREEN}│${NC}\n" "$thank_msg" $thank_padding ""
+                echo -e "${GREEN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+                echo
                 exit 0
                 ;;
             *) 
