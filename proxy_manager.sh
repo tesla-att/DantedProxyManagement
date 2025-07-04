@@ -27,7 +27,6 @@ SELECTED_PORT=""
 if [[ ! -d "$CONFIG_DIR" ]]; then
     mkdir -p "$CONFIG_DIR" 2>/dev/null || {
         echo -e "${RED}Failed to create config directory: $CONFIG_DIR${NC}"
-        echo -e "${RED}Please check if you have the necessary permissions to create directories.${NC}"
         exit 1
     }
 fi
@@ -43,7 +42,9 @@ print_color() {
 print_header() {
     clear
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${WHITE}${BOLD}                        DANTED SOCKS5 PROXY MANAGER v1.0                      ${NC}${CYAN}║${NC}"
+    echo -e "${CYAN}║${WHITE}${BOLD}                        DANTED SOCKS5 PROXY MANAGER v2.0                       ${NC}${CYAN}║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${GRAY}                     Professional Proxy Management Tool                       ${NC}${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo
 }
@@ -51,9 +52,9 @@ print_header() {
 # Function to print section header
 print_section_header() {
     local title=$1
-    echo -e "${BLUE}┌──────────────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${BLUE}┌─────────────────────────────────────────────────────────────────────────────┐${NC}"
     echo -e "${BLUE}│${WHITE}${BOLD} $title${NC}${BLUE}$(printf "%*s" $((77 - ${#title})) "")│${NC}"
-    echo -e "${BLUE}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo -e "${BLUE}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
 
@@ -61,9 +62,9 @@ print_section_header() {
 print_info_box() {
     local message=$1
     local color=${2:-$CYAN}
-    echo -e "${color}┌─ INFO ───────────────────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${color}${NC} $message"
-    echo -e "${color}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo -e "${color}┌─ INFO ──────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${color}│${NC} $message"
+    echo -e "${color}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
 
@@ -142,26 +143,25 @@ read_multiline_input() {
 # Function to get network interfaces with IPs
 get_network_interfaces() {
     print_section_header "Network Interface Selection"
-
     
     local interfaces=()
     local ips=()
     local counter=1
     
-    echo -e "${CYAN}╭─ Available Network Interfaces ───────────────────────────────────────────────╮${NC}"
-    echo -e "${CYAN}${NC} ${WHITE}No.${NC} ${WHITE}Interface Name          ${WHITE}IP Address${NC}"
+    echo -e "${CYAN}╭─ Available Network Interfaces ─────────────────────────────────────────────╮${NC}"
+    
     while IFS= read -r line; do
         interface=$(echo "$line" | awk '{print $1}')
         ip=$(echo "$line" | awk '{print $2}')
         if [[ "$interface" != "lo" && "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             interfaces+=("$interface")
             ips+=("$ip")
-            printf "${CYAN}${NC} %2d. %-20s ${GREEN}%s${NC}%*s${CYAN}${NC}\n" $counter "$interface" "$ip" $((50 - ${#interface} - ${#ip})) ""
+            printf "${CYAN}│${NC} %2d. %-20s ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" $counter "$interface" "$ip" $((50 - ${#interface} - ${#ip})) ""
             ((counter++))
         fi
     done < <(ip -4 addr show | grep -oP '^\d+: \K\w+|inet \K[^/]+' | paste - -)
     
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
     
     if [[ ${#interfaces[@]} -eq 0 ]]; then
@@ -198,25 +198,25 @@ get_system_info() {
     fi
     
     # Fixed width box - 77 characters total width
-    echo -e "${CYAN}╭─ System Information ─────────────────────────────────────────────────────────╮${NC}"
-
+    echo -e "${CYAN}╭─ System Information ───────────────────────────────────────────────────────╮${NC}"
+    
     # CPU Usage - fixed width formatting
-    printf "${CYAN}${NC} CPU Usage:    ${GREEN}%-15s${NC}%*s${CYAN}${NC}\n" "${cpu_usage}%" $((58 - ${#cpu_usage})) ""
+    printf "${CYAN}│${NC} CPU Usage:    ${GREEN}%-15s${NC}%*s${CYAN}│${NC}\n" "${cpu_usage}%" $((58 - ${#cpu_usage})) ""
     
     # Memory - fixed width formatting  
     local memory_display="${memory_used} / ${memory_total}"
     if [[ ${#memory_display} -gt 25 ]]; then
         memory_display="${memory_used}/${memory_total}"
     fi
-    printf "${CYAN}${NC} Memory:       ${GREEN}%-25s${NC}%*s${CYAN}${NC}\n" "$memory_display" $((48 - ${#memory_display})) ""
+    printf "${CYAN}│${NC} Memory:       ${GREEN}%-25s${NC}%*s${CYAN}│${NC}\n" "$memory_display" $((48 - ${#memory_display})) ""
     
     # Disk Usage - fixed width formatting
-    printf "${CYAN}${NC} Disk Usage:   ${GREEN}%-15s${NC}%*s${CYAN}${NC}\n" "$disk_usage" $((58 - ${#disk_usage})) ""
+    printf "${CYAN}│${NC} Disk Usage:   ${GREEN}%-15s${NC}%*s${CYAN}│${NC}\n" "$disk_usage" $((58 - ${#disk_usage})) ""
     
     # Uptime - fixed width formatting
-    printf "${CYAN}${NC} Uptime:       ${GREEN}%-35s${NC}%*s${CYAN}${NC}\n" "$uptime_info" $((38 - ${#uptime_info})) ""
+    printf "${CYAN}│${NC} Uptime:       ${GREEN}%-35s${NC}%*s${CYAN}│${NC}\n" "$uptime_info" $((38 - ${#uptime_info})) ""
     
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
 }
 
 # Function to check service status
@@ -225,13 +225,8 @@ check_service_status() {
     print_section_header "Service Status & System Monitoring"
     
     # Service status - Fixed width box
-    echo -e "${CYAN}╭─ Danted Service Status ──────────────────────────────────────────────────────╮${NC}"
-    if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        print_warning "Danted service is not running. Please start it first."
-        echo
-        read -p "Press Enter to continue..."
-        return
-    fi
+    echo -e "${CYAN}╭─ Danted Service Status ─────────────────────────────────────────────────────╮${NC}"
+    
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
         local status="RUNNING"
         local color=$GREEN
@@ -243,12 +238,12 @@ check_service_status() {
     fi
     
     # Fixed width formatting for service status
-    printf "${CYAN}${NC} Service:      ${color}${status_icon} %-15s${NC}%*s${CYAN}${NC}\n" "$status" $((56 - ${#status})) ""
+    printf "${CYAN}│${NC} Service:      ${color}${status_icon} %-15s${NC}%*s${CYAN}│${NC}\n" "$status" $((56 - ${#status})) ""
     
     if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
-        printf "${CYAN}${NC} Auto-start:   ${GREEN}● %-15s${NC}%*s${CYAN}${NC}\n" "ENABLED" 54 ""
+        printf "${CYAN}│${NC} Auto-start:   ${GREEN}● %-15s${NC}%*s${CYAN}│${NC}\n" "ENABLED" 54 ""
     else
-        printf "${CYAN}${NC} Auto-start:   ${RED}● %-15s${NC}%*s${CYAN}${NC}\n" "DISABLED" 53 ""
+        printf "${CYAN}│${NC} Auto-start:   ${RED}● %-15s${NC}%*s${CYAN}│${NC}\n" "DISABLED" 53 ""
     fi
     
     # Get port and IP if config exists
@@ -262,21 +257,21 @@ check_service_status() {
             listen_address="${listen_address:0:22}..."
         fi
         
-        printf "${CYAN}${NC} Listen on:    ${YELLOW}%-25s${NC}%*s${CYAN}${NC}\n" "$listen_address" $((48 - ${#listen_address})) ""
+        printf "${CYAN}│${NC} Listen on:    ${YELLOW}%-25s${NC}%*s${CYAN}│${NC}\n" "$listen_address" $((48 - ${#listen_address})) ""
     else
-        printf "${CYAN}${NC} Listen on:    ${GRAY}%-25s${NC}%*s${CYAN}${NC}\n" "Not configured" 48 ""
+        printf "${CYAN}│${NC} Listen on:    ${GRAY}%-25s${NC}%*s${CYAN}│${NC}\n" "Not configured" 48 ""
     fi
     
     # Active connections
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null && [[ -f "$DANTED_CONFIG" ]]; then
         local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null)
         local connections=$(netstat -tn 2>/dev/null | grep ":$config_port " | wc -l 2>/dev/null || echo "0")
-        printf "${CYAN}${NC} Connections:  ${BLUE}%-15s${NC}%*s${CYAN}${NC}\n" "$connections active" $((56 - ${#connections})) ""
+        printf "${CYAN}│${NC} Connections:  ${BLUE}%-15s${NC}%*s${CYAN}│${NC}\n" "$connections active" $((56 - ${#connections})) ""
     else
-        printf "${CYAN}${NC} Connections:  ${GRAY}%-15s${NC}%*s${CYAN}${NC}\n" "N/A" 56 ""
+        printf "${CYAN}│${NC} Connections:  ${GRAY}%-15s${NC}%*s${CYAN}│${NC}\n" "N/A" 56 ""
     fi
     
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
     
     # System information
@@ -284,26 +279,19 @@ check_service_status() {
     echo
     
     # Recent logs - Fixed width
-    echo -e "${CYAN}╭─ Recent Service Logs ────────────────────────────────────────────────────────╮${NC}"
-    if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        print_warning "Danted service is not running. No logs available."
-        echo
-        read -p "Press Enter to continue..."
-        return
-    fi
-    echo -e "${CYAN}${NC} ${GRAY}Last 3 logs from the last hour:${NC}${CYAN}${NC}"
+    echo -e "${CYAN}╭─ Recent Service Logs ───────────────────────────────────────────────────────╮${NC}"
     if journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | grep -q "."; then
         journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | while read -r line; do
             # Truncate long log lines to fit in box
             if [[ ${#line} -gt 75 ]]; then
                 line="${line:0:72}..."
             fi
-            printf "${CYAN}${NC} ${GRAY}%-75s${NC}${CYAN}${NC}\n" "$line"
+            printf "${CYAN}│${NC} ${GRAY}%-75s${NC}${CYAN}│${NC}\n" "$line"
         done
     else
-        printf "${CYAN}${NC} ${GRAY}%-75s${NC}${CYAN}${NC}\n" "No recent logs found"
+        printf "${CYAN}│${NC} ${GRAY}%-75s${NC}${CYAN}│${NC}\n" "No recent logs found"
     fi
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
     
     # Control options
@@ -393,11 +381,8 @@ test_bandwidth() {
         local speed_mbps=$(echo "scale=2; $speed / 1024 / 1024 * 8" | bc 2>/dev/null || echo "0")
         
         print_success "Download speed: ${speed_mbps} Mbps"
-        print_info_box "Test completed in ${duration}s"
-
     else
         print_error "Bandwidth test failed!"
-        print_warning "Please check your internet connection."
     fi
     
     echo
@@ -407,18 +392,16 @@ test_bandwidth() {
 # Function to install Danted
 install_danted() {
     print_header
-    print_section_header "Install Danted SOCKS5 Proxy Server"    
+    print_section_header "Install Danted SOCKS5 Proxy Server"
     
     # Check if already installed
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
         print_warning "Danted is already installed and running."
-        echo -e "${YELLOW}You can reinstall it, but this will stop the current service.${NC}"
         read -p "$(echo -e "${YELLOW}❯${NC} Do you want to reinstall? (y/N): ")" reinstall
         if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
             return
         fi
         systemctl stop $DANTED_SERVICE 2>/dev/null
-        print_color $YELLOW "Stopping existing Danted service..."
     fi
     
     # Get network interface
@@ -438,7 +421,6 @@ install_danted() {
                 break
             else
                 print_error "Port $port is already in use. Please choose another port."
-                
             fi
         else
             print_error "Invalid port number. Please enter a number between 1-65535."
@@ -526,11 +508,11 @@ show_users() {
     if [[ ${#users[@]} -eq 0 ]]; then
         print_warning "No SOCKS5 users found."
     else
-        echo -e "${CYAN}╭─ Users List (${#users[@]} users) ───────────────────────────────────────────────────────╮${NC}"
+        echo -e "${CYAN}╭─ Users List (${#users[@]} users) ──────────────────────────────────────────────────────╮${NC}"
         for i in "${!users[@]}"; do
-            printf "${CYAN}${NC} %3d. %-20s%*s${CYAN}${NC}\n" $((i+1)) "${users[i]}" $((50 - ${#users[i]})) ""
+            printf "${CYAN}│${NC} %3d. %-20s%*s${CYAN}│${NC}\n" $((i+1)) "${users[i]}" $((50 - ${#users[i]})) ""
         done
-        echo -e "${CYAN}╰───────────────────────────────────────────────────────────────────────────────╯${NC}"
+        echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     fi
     
     echo
@@ -849,11 +831,11 @@ add_single_user() {
 add_multi_users() {
     print_header
     print_section_header "Add Multiple Users"
-
-    echo -e "${GRAY}Enter data (empty line twice to finish):${NC}"
+    
     # Read usernames using multiline input
     local usernames_input
     usernames_input=$(read_multiline_input "Enter usernames (one per line):")
+    
     if [[ -z "$usernames_input" ]]; then
         print_error "No usernames provided!"
         read -p "Press Enter to continue..."
@@ -879,7 +861,7 @@ add_multi_users() {
                     usernames+=("$username")
                 fi
             else
-                # print_error "Invalid username '$username' (line $line_num). Use only letters, numbers, underscore and dash. Skipping..."
+                print_error "Invalid username '$username' (line $line_num). Use only letters, numbers, underscore and dash. Skipping..."
             fi
         fi
     done <<< "$usernames_input"
@@ -981,11 +963,11 @@ delete_users() {
         return
     fi
     
-    echo -e "${CYAN}╭─ Available Users to Delete ──────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}╭─ Available Users to Delete ─────────────────────────────────────────────────╮${NC}"
     for i in "${!users[@]}"; do
-        printf "${CYAN}${NC} %3d. %-20s%*s${CYAN}${NC}\n" $((i+1)) "${users[i]}" $((50 - ${#users[i]})) ""
+        printf "${CYAN}│${NC} %3d. %-20s%*s${CYAN}│${NC}\n" $((i+1)) "${users[i]}" $((50 - ${#users[i]})) ""
     done
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     
     echo
     print_info_box "Enter user numbers to delete (space-separated, e.g., '1 3 5'):"
@@ -1059,7 +1041,6 @@ test_proxies() {
     echo -e "${GRAY}Example:${NC}"
     echo -e "  ${CYAN}103.195.238.251:30202:user1:pass123${NC}"
     echo -e "  ${CYAN}192.168.1.100:1080:alice:secret456${NC}"
-    echo -e "${GRAY}Enter one proxy per line, leave empty line to finish.${NC}"
     echo
     
     # Read proxy list using multiline input
@@ -1159,7 +1140,7 @@ test_proxies() {
     
     # Simple progress display without complex borders
     echo -e "${CYAN}Proxy Test Results:${NC}"
-    echo "───────────────────────────────────────────────────────────────────────────────"
+    echo "────────────────────────────────────────────────────────────────────────────"
     
     for i in "${!proxies[@]}"; do
         local proxy="${proxies[i]}"
@@ -1185,7 +1166,7 @@ test_proxies() {
         fi
     done
     
-    echo "───────────────────────────────────────────────────────────────────────────────"
+    echo "────────────────────────────────────────────────────────────────────────────"
     
     local success_rate=0
     if [[ $total_count -gt 0 ]]; then
@@ -1208,10 +1189,10 @@ uninstall_danted() {
     print_header
     print_section_header "Uninstall Danted"
     
-    echo -e "${RED}╭─ WARNING ────────────────────────────────────────────────────────────────────╮${NC}"
-    echo -e "${RED}${NC} This will completely remove Danted and all configurations!                 ${RED}${NC}"
-    echo -e "${RED}${NC} All proxy users and config files will be affected.                         ${RED}${NC}"    
-    echo -e "${RED}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${RED}╭─ WARNING ───────────────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${RED}│${NC} This will completely remove Danted and all configurations!                  ${RED}│${NC}"
+    echo -e "${RED}│${NC} All proxy users and config files will be affected.                         ${RED}│${NC}"
+    echo -e "${RED}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     
     echo
     read -p "$(echo -e "${RED}❯${NC} Are you sure you want to uninstall Danted? (y/N): ")" confirm
