@@ -65,7 +65,7 @@ print_info_box() {
     local message=$1
     local color=${2:-$CYAN}
     local msg_length=${#message}
-    local padding=$((75 - msg_length))
+    local padding=$((77 - msg_length))
     
     echo -e "${color}┌─ INFO ───────────────────────────────────────────────────────────────────────┐${NC}"
     printf "${color}│ %s%*s│${NC}\n" "$message" $padding ""
