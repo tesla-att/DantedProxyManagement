@@ -42,7 +42,9 @@ print_color() {
 print_header() {
     clear
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${WHITE}${BOLD}                        DANTED SOCKS5 PROXY MANAGER                           ${NC}${CYAN}║${NC}"
+    echo -e "${CYAN}║${WHITE}${BOLD}                        DANTED SOCKS5 PROXY MANAGER v2.0                       ${NC}${CYAN}║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${GRAY}                     Professional Proxy Management Tool                       ${NC}${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo
 }
@@ -50,9 +52,9 @@ print_header() {
 # Function to print section header
 print_section_header() {
     local title=$1
-    echo -e "${BLUE}┌──────────────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${BLUE}┌─────────────────────────────────────────────────────────────────────────────┐${NC}"
     echo -e "${BLUE}│${WHITE}${BOLD} $title${NC}${BLUE}$(printf "%*s" $((77 - ${#title})) "")│${NC}"
-    echo -e "${BLUE}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo -e "${BLUE}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
 
@@ -60,9 +62,9 @@ print_section_header() {
 print_info_box() {
     local message=$1
     local color=${2:-$CYAN}
-    echo -e "${color}┌─ INFO ───────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${color}┌─ INFO ──────────────────────────────────────────────────────────────────────┐${NC}"
     echo -e "${color}│${NC} $message"
-    echo -e "${color}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo -e "${color}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
 
@@ -162,19 +164,39 @@ get_network_interfaces() {
 
 # Function to get system info
 get_system_info() {
-    local cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
-    local memory_info=$(free -h | grep "Mem:")
-    local memory_used=$(echo $memory_info | awk '{print $3}')
-    local memory_total=$(echo $memory_info | awk '{print $2}')
-    local disk_usage=$(df -h / | tail -1 | awk '{print $5}')
-    local uptime=$(uptime -p)
+    # Get system metrics
+    local cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1 2>/dev/null || echo "N/A")
+    local memory_info=$(free -h | grep "Mem:" 2>/dev/null || echo "N/A N/A N/A")
+    local memory_used=$(echo $memory_info | awk '{print $3}' 2>/dev/null || echo "N/A")
+    local memory_total=$(echo $memory_info | awk '{print $2}' 2>/dev/null || echo "N/A")
+    local disk_usage=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' 2>/dev/null || echo "N/A")
+    local uptime_info=$(uptime -p 2>/dev/null || echo "N/A")
     
-    echo -e "${CYAN}╭─ System Information ─────────────────────────────────────────────────────────────╮${NC}"
-    printf "${CYAN}│${NC} CPU Usage:    ${GREEN}%-10s${NC}%*s${CYAN}│${NC}\n" "$cpu_usage%" $((60 - ${#cpu_usage})) ""
-    printf "${CYAN}│${NC} Memory:       ${GREEN}%-10s${NC} / ${GREEN}%-10s${NC}%*s${CYAN}          │${NC}\n" "$memory_used" "$memory_total" $((40 - ${#memory_used} - ${#memory_total})) ""
-    printf "${CYAN}│${NC} Disk Usage:   ${GREEN}%-10s${NC}%*s${CYAN}│${NC}\n" "$disk_usage" $((60 - ${#disk_usage})) ""
-    printf "${CYAN}│${NC} Uptime:       ${GREEN}%-30s${NC}%*s${CYAN}                  │${NC}\n" "$uptime" $((40 - ${#uptime})) ""
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────────╯${NC}"
+    # Truncate long uptime for consistent display
+    if [[ ${#uptime_info} -gt 35 ]]; then
+        uptime_info="${uptime_info:0:32}..."
+    fi
+    
+    # Fixed width box - 77 characters total width
+    echo -e "${CYAN}╭─ System Information ───────────────────────────────────────────────────────╮${NC}"
+    
+    # CPU Usage - fixed width formatting
+    printf "${CYAN}│${NC} CPU Usage:    ${GREEN}%-15s${NC}%*s${CYAN}│${NC}\n" "${cpu_usage}%" $((58 - ${#cpu_usage})) ""
+    
+    # Memory - fixed width formatting  
+    local memory_display="${memory_used} / ${memory_total}"
+    if [[ ${#memory_display} -gt 25 ]]; then
+        memory_display="${memory_used}/${memory_total}"
+    fi
+    printf "${CYAN}│${NC} Memory:       ${GREEN}%-25s${NC}%*s${CYAN}│${NC}\n" "$memory_display" $((48 - ${#memory_display})) ""
+    
+    # Disk Usage - fixed width formatting
+    printf "${CYAN}│${NC} Disk Usage:   ${GREEN}%-15s${NC}%*s${CYAN}│${NC}\n" "$disk_usage" $((58 - ${#disk_usage})) ""
+    
+    # Uptime - fixed width formatting
+    printf "${CYAN}│${NC} Uptime:       ${GREEN}%-35s${NC}%*s${CYAN}│${NC}\n" "$uptime_info" $((38 - ${#uptime_info})) ""
+    
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
 }
 
 # Function to check service status
@@ -182,8 +204,8 @@ check_service_status() {
     print_header
     print_section_header "Service Status & System Monitoring"
     
-    # Service status
-    echo -e "${CYAN}╭─ Danted Service Status ─────────────────────────────────────────────────────────╮${NC}"
+    # Service status - Fixed width box
+    echo -e "${CYAN}╭─ Danted Service Status ─────────────────────────────────────────────────────╮${NC}"
     
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
         local status="RUNNING"
@@ -195,26 +217,61 @@ check_service_status() {
         local status_icon="●"
     fi
     
-    printf "${CYAN}│${NC} Service:      ${color}${status_icon} %-10s${NC}%*s${CYAN}│${NC}\n" "$status" $((60 - ${#status})) ""
+    # Fixed width formatting for service status
+    printf "${CYAN}│${NC} Service:      ${color}${status_icon} %-15s${NC}%*s${CYAN}│${NC}\n" "$status" $((56 - ${#status})) ""
     
     if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
-        printf "${CYAN}│${NC} Auto-start:   ${GREEN}● ENABLED${NC}%*s${CYAN}│${NC}\n" 54 ""
+        printf "${CYAN}│${NC} Auto-start:   ${GREEN}● %-15s${NC}%*s${CYAN}│${NC}\n" "ENABLED" 54 ""
     else
-        printf "${CYAN}│${NC} Auto-start:   ${RED}● DISABLED${NC}%*s${CYAN}  │${NC}\n" 53 ""
+        printf "${CYAN}│${NC} Auto-start:   ${RED}● %-15s${NC}%*s${CYAN}│${NC}\n" "DISABLED" 53 ""
     fi
     
     # Get port and IP if config exists
     if [[ -f "$DANTED_CONFIG" ]]; then
-        local config_ip=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}')
-        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ')
-        printf "${CYAN}│${NC} Listen on:    ${YELLOW}%-20s${NC}%*s${CYAN}│${NC}\n" "$config_ip:$config_port" $((50 - ${#config_ip} - ${#config_port})) ""
+        local config_ip=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}' 2>/dev/null || echo "N/A")
+        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null || echo "N/A")
+        local listen_address="${config_ip}:${config_port}"
+        
+        # Truncate if too long
+        if [[ ${#listen_address} -gt 25 ]]; then
+            listen_address="${listen_address:0:22}..."
+        fi
+        
+        printf "${CYAN}│${NC} Listen on:    ${YELLOW}%-25s${NC}%*s${CYAN}│${NC}\n" "$listen_address" $((48 - ${#listen_address})) ""
+    else
+        printf "${CYAN}│${NC} Listen on:    ${GRAY}%-25s${NC}%*s${CYAN}│${NC}\n" "Not configured" 48 ""
     fi
     
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────────╯${NC}"
+    # Active connections
+    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null && [[ -f "$DANTED_CONFIG" ]]; then
+        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null)
+        local connections=$(netstat -tn 2>/dev/null | grep ":$config_port " | wc -l 2>/dev/null || echo "0")
+        printf "${CYAN}│${NC} Connections:  ${BLUE}%-15s${NC}%*s${CYAN}│${NC}\n" "$connections active" $((56 - ${#connections})) ""
+    else
+        printf "${CYAN}│${NC} Connections:  ${GRAY}%-15s${NC}%*s${CYAN}│${NC}\n" "N/A" 56 ""
+    fi
+    
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
     
     # System information
     get_system_info
+    echo
+    
+    # Recent logs - Fixed width
+    echo -e "${CYAN}╭─ Recent Service Logs ───────────────────────────────────────────────────────╮${NC}"
+    if journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | grep -q "."; then
+        journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | while read -r line; do
+            # Truncate long log lines to fit in box
+            if [[ ${#line} -gt 75 ]]; then
+                line="${line:0:72}..."
+            fi
+            printf "${CYAN}│${NC} ${GRAY}%-75s${NC}${CYAN}│${NC}\n" "$line"
+        done
+    else
+        printf "${CYAN}│${NC} ${GRAY}%-75s${NC}${CYAN}│${NC}\n" "No recent logs found"
+    fi
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
     
     # Control options
@@ -959,9 +1016,16 @@ test_proxies() {
     print_header
     print_section_header "Test Proxies"
     
+    # Show format example
+    print_info_box "Enter proxy details in format: IP:PORT:USERNAME:PASSWORD"
+    echo -e "${GRAY}Example:${NC}"
+    echo -e "  ${YELLOW}103.195.238.251:30202:user1:pass123${NC}"
+    echo -e "  ${YELLOW}192.168.1.100:1080:alice:secret456${NC}"
+    echo
+    
     # Read proxy list using multiline input
     local proxies_input
-    proxies_input=$(read_multiline_input "Enter proxy details in format: IP:PORT:USERNAME:PASSWORD")
+    proxies_input=$(read_multiline_input "Enter proxy list:")
     
     if [[ -z "$proxies_input" ]]; then
         print_error "No proxies provided!"
@@ -972,6 +1036,8 @@ test_proxies() {
     # Parse proxies
     local proxies=()
     local line_num=0
+    echo -e "${CYAN}Validating proxy format...${NC}"
+    
     while IFS= read -r proxy_line; do
         ((line_num++))
         # Skip empty lines
@@ -981,17 +1047,29 @@ test_proxies() {
         proxy_line=$(echo "$proxy_line" | xargs)
         
         if [[ -n "$proxy_line" ]]; then
-            if [[ "$proxy_line" =~ ^[^:]+:[0-9]+:[^:]+:.+$ ]]; then
-                proxies+=("$proxy_line")
+            # Count colons - should be exactly 3 for IP:PORT:USERNAME:PASSWORD
+            local colon_count=$(echo "$proxy_line" | grep -o ":" | wc -l)
+            if [[ $colon_count -eq 3 ]]; then
+                # Additional validation: check if port is numeric
+                local port_part=$(echo "$proxy_line" | cut -d':' -f2)
+                if [[ "$port_part" =~ ^[0-9]+$ ]] && [[ $port_part -ge 1 ]] && [[ $port_part -le 65535 ]]; then
+                    proxies+=("$proxy_line")
+                    print_color $GREEN "  ✓ Valid: $proxy_line"
+                else
+                    print_error "Invalid port number on line $line_num: $proxy_line"
+                    print_color $GRAY "  Port must be between 1-65535"
+                fi
             else
                 print_error "Invalid format on line $line_num: $proxy_line"
-                print_color $GRAY "  Expected: IP:PORT:USERNAME:PASSWORD"
+                print_color $GRAY "  Expected: IP:PORT:USERNAME:PASSWORD (exactly 3 colons)"
             fi
         fi
     done <<< "$proxies_input"
     
     if [[ ${#proxies[@]} -eq 0 ]]; then
         print_error "No valid proxies provided!"
+        echo
+        print_color $YELLOW "Please check your proxy format and try again."
         read -p "Press Enter to continue..."
         return
     fi
@@ -1008,11 +1086,14 @@ test_proxies() {
     
     for i in "${!proxies[@]}"; do
         local proxy="${proxies[i]}"
+        
+        # Parse proxy components
+        local ip port user pass
         IFS=':' read -r ip port user pass <<< "$proxy"
         
         # Validate extracted components
         if [[ -z "$ip" || -z "$port" || -z "$user" || -z "$pass" ]]; then
-            printf "${CYAN}│${NC} [%2d/%2d] %-20s ${RED}✗ INVALID FORMAT${NC}%*s${CYAN}│${NC}\n" $((i+1)) $total_count "$proxy" $((30 - ${#proxy})) ""
+            printf "${CYAN}│${NC} [%2d/%2d] %-30s ${RED}✗ INVALID${NC}%*s${CYAN}│${NC}\n" $((i+1)) $total_count "$proxy" $((35 - ${#proxy})) ""
             continue
         fi
         
@@ -1020,17 +1101,17 @@ test_proxies() {
         
         # Test with timeout
         local display_proxy="${ip}:${port}@${user}"
-        if [[ ${#display_proxy} -gt 25 ]]; then
-            display_proxy="${display_proxy:0:22}..."
+        if [[ ${#display_proxy} -gt 30 ]]; then
+            display_proxy="${display_proxy:0:27}..."
         fi
         
-        printf "${CYAN}│${NC} [%2d/%2d] %-25s " $((i+1)) $total_count "$display_proxy"
+        printf "${CYAN}│${NC} [%2d/%2d] %-30s " $((i+1)) $total_count "$display_proxy"
         
         if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            printf "${GREEN}✓ SUCCESS${NC}%*s${CYAN}│${NC}\n" $((40 - ${#display_proxy})) ""
+            printf "${GREEN}✓ SUCCESS${NC}%*s${CYAN}│${NC}\n" $((35 - ${#display_proxy})) ""
             ((success_count++))
         else
-            printf "${RED}✗ FAILED${NC}%*s${CYAN}│${NC}\n" $((41 - ${#display_proxy})) ""
+            printf "${RED}✗ FAILED${NC}%*s${CYAN}│${NC}\n" $((36 - ${#display_proxy})) ""
         fi
     done
     
