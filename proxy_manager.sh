@@ -156,7 +156,7 @@ get_network_interfaces() {
     
     # Header with fixed width
     echo -e "${CYAN}╭─ Available Network Interfaces ───────────────────────────────────────────────╮${NC}"
-    printf "${CYAN}│${NC} ${WHITE}No.${NC} ${WHITE}Interface Name          ${WHITE}IP Address${NC}%*s${CYAN}│${NC}\n" 42 ""
+    printf "${CYAN}│${NC} ${WHITE}No.${NC} ${WHITE}Interface Name        ${WHITE}IP Address${NC}%*s${CYAN}│${NC}\n" 42 ""
 
     # Loop through network interfaces and IPs
     while IFS= read -r line; do
@@ -219,7 +219,7 @@ get_system_info() {
     # CPU Usage - fixed width formatting
     local cpu_display="${cpu_usage}%"
     local cpu_content_length=$((14 + ${#cpu_display}))  # " CPU Usage:    " + display
-    local cpu_padding=$((78 - cpu_content_length))
+    local cpu_padding=$((77 - cpu_content_length))
     printf "${CYAN}│${NC} CPU Usage:    ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$cpu_display" $cpu_padding ""
     
     # Memory - fixed width formatting  
@@ -228,17 +228,17 @@ get_system_info() {
         memory_display="${memory_used}/${memory_total}"
     fi
     local memory_content_length=$((14 + ${#memory_display}))  # " Memory:       " + display
-    local memory_padding=$((78 - memory_content_length))
+    local memory_padding=$((77 - memory_content_length))
     printf "${CYAN}│${NC} Memory:       ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$memory_display" $memory_padding ""
     
     # Disk Usage - fixed width formatting
     local disk_content_length=$((14 + ${#disk_usage}))  # " Disk Usage:   " + display
-    local disk_padding=$((78 - disk_content_length))
+    local disk_padding=$((77 - disk_content_length))
     printf "${CYAN}│${NC} Disk Usage:   ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$disk_usage" $disk_padding ""
 
     # Uptime - fixed width formatting
     local uptime_content_length=$((14 + ${#uptime_info}))  # " Uptime:       " + display
-    local uptime_padding=$((78 - uptime_content_length))
+    local uptime_padding=$((77 - uptime_content_length))
     printf "${CYAN}│${NC} Uptime:       ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$uptime_info" $uptime_padding ""
     
     # Footer with fixed width
@@ -278,7 +278,7 @@ check_service_status() {
     # Service status line
     local service_display="${status_icon} ${status}"
     local service_content_length=$((14 + ${#service_display}))  # " Service:      " + display
-    local service_padding=$((78 - service_content_length))
+    local service_padding=$((79 - service_content_length))
     printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
     
     # Auto-start status
@@ -290,7 +290,7 @@ check_service_status() {
         local autostart_color=$RED
     fi
     local autostart_content_length=$((14 + ${#autostart_display}))  # " Auto-start:   " + display
-    local autostart_padding=$((78 - autostart_content_length))
+    local autostart_padding=$((79 - autostart_content_length))
     printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
     
     # Listen address
@@ -307,7 +307,7 @@ check_service_status() {
         local listen_address="Not configured"
     fi
     local listen_content_length=$((14 + ${#listen_address}))  # " Listen on:    " + display
-    local listen_padding=$((78 - listen_content_length))
+    local listen_padding=$((77 - listen_content_length))
     local listen_color=$([[ "$listen_address" == "Not configured" ]] && echo "$GRAY" || echo "$YELLOW")
     printf "${CYAN}│${NC} Listen on:    ${listen_color}%s${NC}%*s${CYAN}│${NC}\n" "$listen_address" $listen_padding ""
     
@@ -322,7 +322,7 @@ check_service_status() {
         local conn_color=$GRAY
     fi
     local conn_content_length=$((14 + ${#conn_display}))  # " Connections:  " + display
-    local conn_padding=$((78 - conn_content_length))
+    local conn_padding=$((77 - conn_content_length))
     printf "${CYAN}│${NC} Connections:  ${conn_color}%s${NC}%*s${CYAN}│${NC}\n" "$conn_display" $conn_padding ""
     
     echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
@@ -374,7 +374,7 @@ check_service_status() {
     echo
     
     # Control options with box formatting
-    echo -e "${YELLOW}╭─ Control Options ─────────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${YELLOW}╭─ Control Options ────────────────────────────────────────────────────────────╮${NC}"
 
     local control_items=(
         "1. Restart Service"
@@ -387,7 +387,7 @@ check_service_status() {
 
     for item in "${control_items[@]}"; do
         local item_length=$((${#item} + 1))  # +1 for leading space
-        local item_padding=$((8 - item_length))
+        local item_padding=$((78 - item_length))
         printf "${YELLOW}│${NC} ${CYAN}%s${NC}%*s${YELLOW}│${NC}\n" "$item" $item_padding ""
     done
 
@@ -603,7 +603,7 @@ show_users() {
     
     if [[ ${#users[@]} -eq 0 ]]; then
         # Empty state with proper box formatting
-        echo -e "${CYAN}╭─ Users List (0 users) ───────────────────────────────────────────────────────╮${NC}"
+        echo -e "${CYAN}╭─ Users List (0 users) ─────────────────────────────────────────────────────────────╮${NC}"
         local warning_msg="No SOCKS5 users found."
         local warning_length=$((${#warning_msg} + 1))
         local warning_padding=$((78 - warning_length))
@@ -1045,7 +1045,7 @@ manage_add_users() {
 
     for item in "${add_user_items[@]}"; do
         local item_length=$((${#item} + 1))  # +1 for leading space
-        local item_padding=$((8 - item_length))
+        local item_padding=$((78 - item_length))
         printf "${CYAN}│${NC} ${CYAN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
     done
 
@@ -1282,21 +1282,29 @@ test_proxies() {
         # Create progress indicator
         local progress_indicator=$(printf "[%2d/%2d]" $((i+1)) $total_count)
         
-        # Test proxy and format result
-        printf "${CYAN}│${NC} %s %-30s " "$progress_indicator" "$display_proxy"
-        
+        # Test proxy first
         if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            local result="${GREEN}✓ SUCCESS${NC}"
+            local result_text="✓ SUCCESS"
+            local result_color="${GREEN}"
             ((success_count++))
         else
-            local result="${RED}✗ FAILED${NC}"
+            local result_text="✗ FAILED"
+            local result_color="${RED}"
         fi
         
-        # Calculate padding for result
-        local content_length=$((${#progress_indicator} + 1 + 30 + 1))  # progress + space + proxy + space
-        local result_padding=$((78 - content_length - 9))  # 9 for "✓ SUCCESS" or "✗ FAILED  "
+        # Calculate padding based on actual text length (without color codes)
+        local progress_len=${#progress_indicator}
+        local proxy_len=${#display_proxy}
+        local result_len=${#result_text}
         
-        printf "%*s%s${CYAN}│${NC}\n" $result_padding "" "$result"
+        # Total content: " " + progress + " " + proxy + " " + result + " "
+        local total_content_len=$((1 + progress_len + 1 + proxy_len + 1 + result_len + 1))
+        local padding=$((75 - total_content_len))
+        
+        # Print the formatted line
+        printf "${CYAN}│${NC} %s %-30s %s%s%*s${CYAN}│${NC}\n" \
+            "$progress_indicator" "$display_proxy" "$result_color" "$result_text" $padding ""
+        
     done
 
     echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
