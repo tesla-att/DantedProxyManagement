@@ -27,6 +27,7 @@ SELECTED_PORT=""
 if [[ ! -d "$CONFIG_DIR" ]]; then
     mkdir -p "$CONFIG_DIR" 2>/dev/null || {
         echo -e "${RED}Failed to create config directory: $CONFIG_DIR${NC}"
+        echo -e "${RED}Please check if you have the necessary permissions to create directories.${NC}"
         exit 1
     }
 fi
@@ -141,6 +142,7 @@ read_multiline_input() {
 # Function to get network interfaces with IPs
 get_network_interfaces() {
     print_section_header "Network Interface Selection"
+
     
     local interfaces=()
     local ips=()
@@ -524,11 +526,11 @@ show_users() {
     if [[ ${#users[@]} -eq 0 ]]; then
         print_warning "No SOCKS5 users found."
     else
-        echo -e "${CYAN}── Users List (${#users[@]} users) ────────────────────────────────────────────────────────${NC}"
+        echo -e "${CYAN}╭─ Users List (${#users[@]} users) ───────────────────────────────────────────────────────╮${NC}"
         for i in "${!users[@]}"; do
             printf "${CYAN}${NC} %3d. %-20s%*s${CYAN}${NC}\n" $((i+1)) "${users[i]}" $((50 - ${#users[i]})) ""
         done
-        echo -e "${CYAN}────────────────────────────────────────────────────────────────────────────────${NC}"
+        echo -e "${CYAN}╰───────────────────────────────────────────────────────────────────────────────╯${NC}"
     fi
     
     echo
@@ -851,6 +853,7 @@ add_multi_users() {
     # Read usernames using multiline input
     local usernames_input
     usernames_input=$(read_multiline_input "Enter usernames (one per line):")
+    echo -e "${GRAY}Enter data (empty line twice to finish):${NC}"
     
     if [[ -z "$usernames_input" ]]; then
         print_error "No usernames provided!"
@@ -1207,8 +1210,8 @@ uninstall_danted() {
     print_section_header "Uninstall Danted"
     
     echo -e "${RED}╭─ WARNING ───────────────────────────────────────────────────────────────────╮${NC}"
-    echo -e "${RED}${NC} This will completely remove Danted and all configurations!                  ${RED}${NC}"
-    echo -e "${RED}${NC} All proxy users and config files will be affected.                         ${RED}${NC}"
+    echo -e "${RED}${NC} This will completely remove Danted and all configurations!                 ${RED}${NC}"
+    echo -e "${RED}${NC} All proxy users and config files will be affected.                         ${RED}${NC}"    
     echo -e "${RED}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
     
     echo
