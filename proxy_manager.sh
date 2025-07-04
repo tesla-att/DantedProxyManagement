@@ -849,12 +849,11 @@ add_single_user() {
 add_multi_users() {
     print_header
     print_section_header "Add Multiple Users"
-    
+
+    echo -e "${GRAY}Enter data (empty line twice to finish):${NC}"
     # Read usernames using multiline input
     local usernames_input
     usernames_input=$(read_multiline_input "Enter usernames (one per line):")
-    echo -e "${GRAY}Enter data (empty line twice to finish):${NC}"
-    
     if [[ -z "$usernames_input" ]]; then
         print_error "No usernames provided!"
         read -p "Press Enter to continue..."
@@ -880,7 +879,7 @@ add_multi_users() {
                     usernames+=("$username")
                 fi
             else
-                print_error "Invalid username '$username' (line $line_num). Use only letters, numbers, underscore and dash. Skipping..."
+                # print_error "Invalid username '$username' (line $line_num). Use only letters, numbers, underscore and dash. Skipping..."
             fi
         fi
     done <<< "$usernames_input"
@@ -1209,10 +1208,10 @@ uninstall_danted() {
     print_header
     print_section_header "Uninstall Danted"
     
-    echo -e "${RED}╭─ WARNING ───────────────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${RED}╭─ WARNING ────────────────────────────────────────────────────────────────────╮${NC}"
     echo -e "${RED}${NC} This will completely remove Danted and all configurations!                 ${RED}${NC}"
     echo -e "${RED}${NC} All proxy users and config files will be affected.                         ${RED}${NC}"    
-    echo -e "${RED}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${RED}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     
     echo
     read -p "$(echo -e "${RED}❯${NC} Are you sure you want to uninstall Danted? (y/N): ")" confirm
