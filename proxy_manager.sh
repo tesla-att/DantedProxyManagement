@@ -1157,7 +1157,7 @@ test_proxies() {
     # Show format example clearly
     echo -e "${YELLOW}Format: ${WHITE}IP:PORT:USERNAME:PASSWORD${NC}"
     echo -e "${GRAY}Example:${NC}"
-    echo -e "  ${CYAN}103.195.238.251:30202:user1:pass123${NC}"
+    echo -e "  ${CYAN}100:150:200:250:30500:user1:pass123${NC}"
     echo -e "  ${CYAN}192.168.1.100:1080:alice:secret456${NC}"
     echo -e "${GRAY}Enter one proxy per line, leave empty line to finish.${NC}"
     echo
@@ -1513,13 +1513,4 @@ main() {
 }
 
 # Run main function
-main "$@".66.66",
-          "117.50.22.22",
-          "2400:7fc0:849e:200::4",
-          "2404:c2c0:85d8:901::4",
-          "117.50.10.10",
-          "52.80.52.52",
-          "2400:7fc0:849e:200::8",
-          "2404:c2c0:85d8:901::8",
-          "117.50.60.30",
-          "52.80
+main "$@"
