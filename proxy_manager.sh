@@ -586,17 +586,17 @@ show_users() {
 
     if [[ ${#users[@]} -eq 0 ]]; then
         # Empty state with proper box formatting
-        echo -e "${CYAN}╭─ Users List (0 users) ────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${CYAN}╭─ Users List (0 users) ───────────────────────────────────────────────────────╮${NC}"
         local warning_msg="No SOCKS5 users found."
         local warning_length=$((${#warning_msg} + 1))
-        local warning_padding=$((77 - warning_length))
+        local warning_padding=$((78 - warning_length))
         printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
         echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     else
         # Header with user count
         local header_title="Users List (${#users[@]} users)"
         local header_length=${#header_title}
-        local header_padding=$((76 - header_length))  # 78 - 6 (for "─ " and " ") = 69
+        local header_padding=$((75 - header_length))  # 78 - 6 (for "─ " and " ") = 69
 
         printf "${CYAN}╭─ %s" "$header_title"
         for ((i=0; i<$header_padding; i++)); do printf "─"; done
@@ -1063,6 +1063,15 @@ delete_users() {
         read -p "Press Enter to continue..."
         return
     fi
+
+    print_info_box "Enter user numbers to delete (space-separated, e.g., '1 3 5'):"
+    read -p "$(echo -e "${YELLOW}❯${NC} Selection: ")" selections
+    
+    if [[ -z "$selections" ]]; then
+        print_warning "No selection made."
+        read -p "Press Enter to continue..."
+        return
+    fi
     
     echo -e "${CYAN}╭─ Available Users to Delete ──────────────────────────────────────────────────╮${NC}"
     for i in "${!users[@]}"; do
@@ -1076,14 +1085,6 @@ delete_users() {
     echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     
     echo
-    print_info_box "Enter user numbers to delete (space-separated, e.g., '1 3 5'):"
-    read -p "$(echo -e "${YELLOW}❯${NC} Selection: ")" selections
-    
-    if [[ -z "$selections" ]]; then
-        print_warning "No selection made."
-        read -p "Press Enter to continue..."
-        return
-    fi
     
     local to_delete=()
     for selection in $selections; do
@@ -1145,7 +1146,8 @@ test_proxies() {
     # Show format example clearly
     echo -e "${YELLOW}Format: ${WHITE}IP:PORT:USERNAME:PASSWORD${NC}"
     echo -e "${GRAY}Example:${NC}"
-    echo -e "  ${CYAN}100:150:200:250:30500:user1:pass123${NC}"
+    echo -e "  ${CYAN}100.150.200.
+    250:30500:user1:pass123${NC}"
     echo -e "  ${CYAN}192.168.1.100:1080:alice:secret456${NC}"
     echo -e "${GRAY}Enter one proxy per line, leave empty line to finish.${NC}"
     echo
@@ -1245,8 +1247,9 @@ test_proxies() {
     local success_count=0
     local total_count=${#proxies[@]}
     
-# Proxy test results with proper box formatting
-    echo -e "${CYAN}╭─ Proxy Test Results ─────────────────────────────────────────────────────────╮${NC}"
+# Proxy test results with simple formatting
+    echo -e "${CYAN}=== Proxy Test Results ===${NC}"
+    echo
 
     for i in "${!proxies[@]}"; do
         local proxy="${proxies[i]}"
@@ -1273,58 +1276,32 @@ test_proxies() {
             local result_text="${RED}✗ FAILED${NC}"
         fi
         
-        # Calculate padding based on actual text length (không tính mã màu)
-        local progress_len=${#progress_indicator}
-        local proxy_len=${#display_proxy}
-        # Độ dài thực tế của result_text không tính mã màu
-        local result_len=8  # "✓ SUCCESS" hoặc "✗ FAILED" đều 8 ký tự
-        
-        # Total content: " " + progress + " " + proxy + " " + result + " "
-        local total_content_len=$((1 + progress_len + 1 + proxy_len + 1 + result_len + 1))
-        local padding=$((70 - total_content_len))
-        
         # Print the formatted line
-        printf "${CYAN}│${NC} %s %-30s %b%*s${CYAN}│${NC}\n" \
-            "$progress_indicator" "$display_proxy" "$result_text" $padding ""
+        printf "  %s %-30s %s\n" "$progress_indicator" "$display_proxy" "$result_text"
         
     done
 
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-    
     local success_rate=0
     if [[ $total_count -gt 0 ]]; then
         success_rate=$((success_count * 100 / total_count))
     fi
     
     echo
-    echo -e "${CYAN}╭─ Test Summary ────────────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}=== Test Summary ===${NC}"
+    echo
 
     # Total Proxies
-    local total_text="Total Proxies: $total_count"
-    local total_length=$((${#total_text} + 1))
-    local total_padding=$((78 - total_length))
-    printf "${CYAN}│${NC} Total Proxies:   ${WHITE}%s${NC}%*s${CYAN}│${NC}\n" "$total_count" $total_padding ""
+    printf "  Total Proxies:   ${WHITE}%s${NC}\n" "$total_count"
 
     # Successful
-    local success_text="Successful: $success_count"
-    local success_length=$((${#success_text} + 1))
-    local success_padding=$((78 - success_length))
-    printf "${CYAN}│${NC} Successful:      ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$success_count" $success_padding ""
+    printf "  Successful:      ${GREEN}%s${NC}\n" "$success_count"
 
     # Failed
     local failed_count=$((total_count - success_count))
-    local failed_text="Failed: $failed_count"
-    local failed_length=$((${#failed_text} + 1))
-    local failed_padding=$((78 - failed_length))
-    printf "${CYAN}│${NC} Failed:          ${RED}%s${NC}%*s${CYAN}│${NC}\n" "$failed_count" $failed_padding ""
+    printf "  Failed:          ${RED}%s${NC}\n" "$failed_count"
 
     # Success Rate
-    local rate_text="Success Rate: ${success_rate}%"
-    local rate_length=$((${#rate_text} + 1))
-    local rate_padding=$((78 - rate_length))
-    printf "${CYAN}│${NC} Success Rate:    ${YELLOW}%s%%${NC}%*s${CYAN}│${NC}\n" "$success_rate" $rate_padding ""
-
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    printf "  Success Rate:    ${YELLOW}%s%%${NC}\n" "$success_rate"
     
     echo
     read -p "Press Enter to continue..."
