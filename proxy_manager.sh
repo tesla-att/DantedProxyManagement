@@ -1247,8 +1247,10 @@ test_proxies() {
     local success_count=0
     local total_count=${#proxies[@]}
     
-# Proxy test results with simple formatting
-    echo -e "${CYAN}=== Proxy Test Results ===${NC}"
+# Proxy test results with modern terminal style
+    echo
+    echo -e "${BLUE}${BOLD}📊 PROXY TEST RESULTS${NC}"
+    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo
 
     for i in "${!proxies[@]}"; do
@@ -1261,23 +1263,26 @@ test_proxies() {
         
         # Test with timeout
         local display_proxy="${ip}:${port}@${user}"
-        if [[ ${#display_proxy} -gt 30 ]]; then
-            display_proxy="${display_proxy:0:27}..."
+        if [[ ${#display_proxy} -gt 35 ]]; then
+            display_proxy="${display_proxy:0:32}..."
         fi
         
         # Create progress indicator
-        local progress_indicator=$(printf "[%2d/%2d]" $((i+1)) $total_count)
+        local progress_indicator=$(printf "%2d/%2d" $((i+1)) $total_count)
         
         # Test proxy first
         if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            local result_text="${GREEN}✓ SUCCESS${NC}"
+            local result_icon="${GREEN}✓${NC}"
+            local result_text="${GREEN}SUCCESS${NC}"
             ((success_count++))
         else
-            local result_text="${RED}✗ FAILED${NC}"
+            local result_icon="${RED}✗${NC}"
+            local result_text="${RED}FAILED${NC}"
         fi
         
-        # Print the formatted line
-        printf "  %s %-30s %s\n" "$progress_indicator" "$display_proxy" "$result_text"
+        # Print the formatted line with modern spacing
+        printf "  ${GRAY}[%s]${NC} %-35s ${result_icon} ${result_text}\n" \
+            "$progress_indicator" "$display_proxy"
         
     done
 
@@ -1287,21 +1292,18 @@ test_proxies() {
     fi
     
     echo
-    echo -e "${CYAN}=== Test Summary ===${NC}"
+    echo -e "${BLUE}${BOLD}📈 TEST SUMMARY${NC}"
+    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo
 
-    # Total Proxies
-    printf "  Total Proxies:   ${WHITE}%s${NC}\n" "$total_count"
-
-    # Successful
-    printf "  Successful:      ${GREEN}%s${NC}\n" "$success_count"
-
-    # Failed
+    # Calculate failed count
     local failed_count=$((total_count - success_count))
-    printf "  Failed:          ${RED}%s${NC}\n" "$failed_count"
-
-    # Success Rate
-    printf "  Success Rate:    ${YELLOW}%s%%${NC}\n" "$success_rate"
+    
+    # Create summary with modern layout
+    printf "  ${WHITE}Total Proxies:${NC}   ${CYAN}%d${NC}\n" "$total_count"
+    printf "  ${WHITE}Successful:${NC}      ${GREEN}%d${NC}\n" "$success_count"
+    printf "  ${WHITE}Failed:${NC}          ${RED}%d${NC}\n" "$failed_count"
+    printf "  ${WHITE}Success Rate:${NC}    ${YELLOW}%d%%${NC}\n" "$success_rate"
     
     echo
     read -p "Press Enter to continue..."
