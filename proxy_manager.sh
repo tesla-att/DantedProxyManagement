@@ -1248,7 +1248,7 @@ test_proxies() {
     local total_count=${#proxies[@]}
     
 # Proxy test results with proper box formatting
-    echo -e "${CYAN}─ Proxy Test Results ─────────────────────────────────────────────────────────${NC}"
+    echo -e "${CYAN}╭─ Proxy Test Results ─────────────────────────────────────────────────────────╮${NC}"
 
     for i in "${!proxies[@]}"; do
         local proxy="${proxies[i]}"
@@ -1286,12 +1286,12 @@ test_proxies() {
         local padding=$((70 - total_content_len))
         
         # Print the formatted line
-        printf " %s %-30s %b%*s\n" \
+        printf "${CYAN}│${NC} %s %-30s %b%*s${CYAN}│${NC}\n" \
             "$progress_indicator" "$display_proxy" "$result_text" $padding ""
         
     done
 
-    echo -e "${CYAN}──────────────────────────────────────────────────────────────────────────────${NC}"
+    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     
     local success_rate=0
     if [[ $total_count -gt 0 ]]; then
@@ -1299,34 +1299,34 @@ test_proxies() {
     fi
     
     echo
-    echo -e "${CYAN}─ Test Summary ────────────────────────────────────────────────────────────────${NC}"
+    echo -e "${CYAN}╭─ Test Summary ────────────────────────────────────────────────────────────────╮${NC}"
 
     # Total Proxies
     local total_text="Total Proxies: $total_count"
     local total_length=$((${#total_text} + 1))
     local total_padding=$((78 - total_length))
-    printf " Total Proxies:   ${WHITE}%s${NC}%*s\n" "$total_count" $total_padding ""
+    printf "${CYAN}${NC} Total Proxies:   ${WHITE}%s${NC}%*s${CYAN}${NC}\n" "$total_count" $total_padding ""
 
     # Successful
     local success_text="Successful: $success_count"
     local success_length=$((${#success_text} + 1))
     local success_padding=$((78 - success_length))
-    printf " Successful:      ${GREEN}%s${NC}%*s\n" "$success_count" $success_padding ""
+    printf "${CYAN}${NC} Successful:      ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$success_count" $success_padding ""
 
     # Failed
     local failed_count=$((total_count - success_count))
     local failed_text="Failed: $failed_count"
     local failed_length=$((${#failed_text} + 1))
     local failed_padding=$((78 - failed_length))
-    printf " Failed:          ${RED}%s${NC}%*s\n" "$failed_count" $failed_padding ""
+    printf "${CYAN}${NC} Failed:          ${RED}%s${NC}%*s${CYAN}${NC}\n" "$failed_count" $failed_padding ""
 
     # Success Rate
     local rate_text="Success Rate: ${success_rate}%"
     local rate_length=$((${#rate_text} + 1))
     local rate_padding=$((78 - rate_length))
-    printf " Success Rate:    ${YELLOW}%s%%${NC}%*s\n" "$success_rate" $rate_padding ""
+    printf "${CYAN}${NC} Success Rate:    ${YELLOW}%s%%${NC}%*s${CYAN}${NC}\n" "$success_rate" $rate_padding ""
 
-    echo -e "${CYAN}──────────────────────────────────────────────────────────────────────────────${NC}"
+    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     
     echo
     read -p "Press Enter to continue..."
