@@ -1249,7 +1249,7 @@ test_proxies() {
     
 # Proxy test results with modern terminal style
     echo
-    echo -e "${BLUE}${BOLD}📊 PROXY TEST RESULTS${NC}"
+    echo -e "${BLUE}${BOLD} PROXY TEST RESULTS${NC}"
     echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo
 
@@ -1292,7 +1292,7 @@ test_proxies() {
     fi
     
     echo
-    echo -e "${BLUE}${BOLD}📈 TEST SUMMARY${NC}"
+    echo -e "${BLUE}${BOLD} TEST SUMMARY${NC}"
     echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo
 
