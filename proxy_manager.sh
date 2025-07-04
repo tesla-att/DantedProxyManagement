@@ -52,7 +52,7 @@ print_header() {
 print_section_header() {
     local title=$1
     local title_length=${#title}
-    local padding=$((76 - title_length))
+    local padding=$((77 - title_length))
     
     echo -e "${BLUE}┌──────────────────────────────────────────────────────────────────────────────┐${NC}"
     printf "${BLUE}│${WHITE}${BOLD} %s${NC}${BLUE}%*s│${NC}\n" "$title" $padding ""
