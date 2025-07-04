@@ -254,15 +254,16 @@ check_service_status() {
     echo -e "${CYAN}╭─ Danted Service Status ──────────────────────────────────────────────────────╮${NC}"
     
     # Check if service is running first
-    #if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-    #    local warning_content_length=$((${#"Danted service is not running. Please start it first."} + 1))
-    #    local warning_padding=$((78 - warning_content_length))
-    #    printf "${CYAN}│${NC} ${YELLOW}Danted service is not running. Please start it first.${NC}%*s${CYAN}│${NC}\n" $warning_padding ""
-    #    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-    #       echo
-    #    read -p "Press Enter to continue..."
-    #    return
-    #fi
+    if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+        local warning_msg="Danted service is not running. Please start it first."
+        local warning_content_length=$((${#warning_msg} + 1))
+        local warning_padding=$((78 - warning_content_length))
+        printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
+        echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+        echo
+        read -p "Press Enter to continue..."
+        return
+    fi
     
     # Determine service status
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
