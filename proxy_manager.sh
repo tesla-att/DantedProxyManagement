@@ -67,7 +67,7 @@ print_info_box() {
     
     # Tạo đường viền trên với "INFO"
     printf "${color}┌─ INFO "
-    printf "%*s" $((width - 7)) "" | tr ' ' '─'
+    for ((i=0; i<$((width - 7)); i++)); do printf "─"; done
     printf "┐${NC}\n"
     
     # Tạo dòng message với padding tự động
@@ -76,9 +76,8 @@ print_info_box() {
     
     # Tạo đường viền dưới
     printf "${color}└"
-    printf "%*s" $width "" | tr ' ' '─'
+    for ((i=0; i<$width; i++)); do printf "─"; done
     printf "┘${NC}\n"
-    echo
 }
 
 # Function to print success message
