@@ -373,14 +373,25 @@ check_service_status() {
     echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
     
-    # Control options
-    echo -e "${YELLOW}Control Options:${NC}"
-    echo -e "${CYAN}1.${NC} Restart Service"
-    echo -e "${CYAN}2.${NC} Stop Service"
-    echo -e "${CYAN}3.${NC} Start Service"
-    echo -e "${CYAN}4.${NC} View Full Logs"
-    echo -e "${CYAN}5.${NC} Test Internet Bandwidth"
-    echo -e "${CYAN}6.${NC} Back to Main Menu"
+    # Control options with box formatting
+    echo -e "${YELLOW}╭─ Control Options ─────────────────────────────────────────────────────────────╮${NC}"
+
+    local control_items=(
+        "1. Restart Service"
+        "2. Stop Service"
+        "3. Start Service"
+        "4. View Full Logs"
+        "5. Test Internet Bandwidth"
+        "6. Back to Main Menu"
+    )
+
+    for item in "${control_items[@]}"; do
+        local item_length=$((${#item} + 1))  # +1 for leading space
+        local item_padding=$((75 - item_length))
+        printf "${YELLOW}│${NC} ${CYAN}%s${NC}%*s${YELLOW}│${NC}\n" "$item" $item_padding ""
+    done
+
+    echo -e "${YELLOW}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
     
     while true; do
@@ -1024,10 +1035,22 @@ manage_add_users() {
         print_header
         print_section_header "Add Users Menu"
         
-        echo -e "${CYAN}1.${NC} Add single user"
-        echo -e "${CYAN}2.${NC} Add multiple users"
-        echo -e "${CYAN}3.${NC} Back to main menu"
-        echo
+    echo -e "${CYAN}╭─ Add Users Options ───────────────────────────────────────────────────────────╮${NC}"
+
+    local add_user_items=(
+        "1. Add single user"
+        "2. Add multiple users"
+        "3. Back to main menu"
+    )
+
+    for item in "${add_user_items[@]}"; do
+        local item_length=$((${#item} + 1))  # +1 for leading space
+        local item_padding=$((75 - item_length))
+        printf "${CYAN}│${NC} ${CYAN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
+    done
+
+    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo
         
         read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-3]: ")" choice
         
