@@ -61,9 +61,23 @@ print_section_header() {
 print_info_box() {
     local message=$1
     local color=${2:-$CYAN}
-    echo -e "${color}┌─ INFO ───────────────────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${color}${NC} $message"
-    echo -e "${color}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    local width=78
+    local msg_length=${#message}
+    local padding=$((width - msg_length - 1))
+    
+    # Tạo đường viền trên với "INFO"
+    printf "${color}┌─ INFO "
+    printf "%*s" $((width - 7)) "" | tr ' ' '─'
+    printf "┐${NC}\n"
+    
+    # Tạo dòng message với padding tự động
+    printf "${color}│ %s" "$message"
+    printf "%*s│${NC}\n" $padding ""
+    
+    # Tạo đường viền dưới
+    printf "${color}└"
+    printf "%*s" $width "" | tr ' ' '─'
+    printf "┘${NC}\n"
     echo
 }
 
@@ -530,7 +544,7 @@ show_users() {
         for i in "${!users[@]}"; do
             printf "${CYAN}${NC} %3d. %-20s%*s${CYAN}${NC}\n" $((i+1)) "${users[i]}" $((50 - ${#users[i]})) ""
         done
-        echo -e "${CYAN}╰───────────────────────────────────────────────────────────────────────────────╯${NC}"
+        echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     fi
     
     echo
@@ -864,10 +878,11 @@ add_multi_users() {
         
         if [[ -n "$username" ]]; then
             if [[ "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-                if ! id "$username" &>/dev/null; then
+                if id "$username" &>/dev/null; then
+                    print_error "User '$username' already exists! Skipping..."
+                else
                     usernames+=("$username")
                 fi
-                # Removed error messages for existing users and invalid usernames
             fi
         fi
     done <<< "$usernames_input"
