@@ -50,12 +50,9 @@ print_header() {
 # Function to print section header
 print_section_header() {
     local title=$1
-    local width=78
-    local title_length=$(stripped_length "$title")
-    local padding=$((width - 2 - title_length))
-    printf "${BLUE}┌%0.s─" $(seq 1 $((width-2))); echo "┐${NC}"
-    printf "${BLUE}│${WHITE}${BOLD} %s%*s${NC}${BLUE}│${NC}\n" "$title" "$padding" ""
-    printf "${BLUE}└%0.s─" $(seq 1 $((width-2))); echo "┘${NC}"
+    echo -e "${BLUE}┌──────────────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${BLUE}│${WHITE}${BOLD} $title${NC}${BLUE}$(printf "%*s" $((77 - ${#title})) "")│${NC}"
+    echo -e "${BLUE}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
 
@@ -63,47 +60,28 @@ print_section_header() {
 print_info_box() {
     local message=$1
     local color=${2:-$CYAN}
-    local width=78
-    local label=" INFO "
-    local label_length=$(stripped_length "$label")
-    printf "${color}┌─%s" "$label"
-    printf "─%.0s" $(seq 1 $((width-4-label_length)))
-    echo "┐${NC}"
-    local msg_length=$(stripped_length "$message")
-    local padding=$((width - 2 - msg_length))
-    printf "${color}${NC} %s%*s\n" "$message" "$padding" ""
-    printf "${color}└"; printf "─%.0s" $(seq 1 $((width-2))); echo "┘${NC}"
+    echo -e "${color}┌─ INFO ───────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${color}${NC} $message"
+    echo -e "${color}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
 
 # Function to print success message
 print_success() {
     local message=$1
-    local width=78
-    local icon="✓"
-    local msg_length=$(stripped_length "$message")
-    local padding=$((width - 4 - msg_length))
-    printf "${GREEN}${icon}${NC} ${GREEN}%s%*s${NC}\n" "$message" "$padding" ""
+    echo -e "${GREEN}✓${NC} ${GREEN}$message${NC}"
 }
 
 # Function to print error message
 print_error() {
     local message=$1
-    local width=78
-    local icon="✗"
-    local msg_length=$(stripped_length "$message")
-    local padding=$((width - 4 - msg_length))
-    printf "${RED}${icon}${NC} ${RED}%s%*s${NC}\n" "$message" "$padding" ""
+    echo -e "${RED}✗${NC} ${RED}$message${NC}"
 }
 
 # Function to print warning message
 print_warning() {
     local message=$1
-    local width=78
-    local icon="⚠"
-    local msg_length=$(stripped_length "$message")
-    local padding=$((width - 4 - msg_length))
-    printf "${YELLOW}${icon}${NC} ${YELLOW}%s%*s${NC}\n" "$message" "$padding" ""
+    echo -e "${YELLOW}⚠${NC} ${YELLOW}$message${NC}"
 }
 
 # Function to read multiline input with paste support
@@ -1357,12 +1335,6 @@ main() {
                 ;;
         esac
     done
-}
-
-# Hàm phụ để tính độ dài chuỗi không có escape code
-stripped_length() {
-    local input="$1"
-    echo -e "$input" | sed 's/\x1b\[[0-9;]*m//g' | wc -m
 }
 
 # Run main function
