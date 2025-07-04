@@ -156,7 +156,7 @@ get_network_interfaces() {
     
     # Header with fixed width
     echo -e "${CYAN}╭─ Available Network Interfaces ───────────────────────────────────────────────╮${NC}"
-    printf "${CYAN}│${NC} ${WHITE}No.${NC} ${WHITE}Interface Name        ${WHITE}IP Address${NC}%*s${CYAN}│${NC}\n" 42 ""
+    printf "${CYAN}│${NC} ${WHITE}No.${NC} ${WHITE}Interface Name       ${WHITE}IP Address${NC}%*s${CYAN}│${NC}\n" 42 ""
 
     # Loop through network interfaces and IPs
     while IFS= read -r line; do
@@ -254,15 +254,15 @@ check_service_status() {
     echo -e "${CYAN}╭─ Danted Service Status ──────────────────────────────────────────────────────╮${NC}"
     
     # Check if service is running first
-    if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        local warning_content_length=$((${#"Danted service is not running. Please start it first."} + 1))
-        local warning_padding=$((78 - warning_content_length))
-        printf "${CYAN}│${NC} ${YELLOW}Danted service is not running. Please start it first.${NC}%*s${CYAN}│${NC}\n" $warning_padding ""
-        echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-        echo
-        read -p "Press Enter to continue..."
-        return
-    fi
+    #if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+    #    local warning_content_length=$((${#"Danted service is not running. Please start it first."} + 1))
+    #    local warning_padding=$((78 - warning_content_length))
+    #    printf "${CYAN}│${NC} ${YELLOW}Danted service is not running. Please start it first.${NC}%*s${CYAN}│${NC}\n" $warning_padding ""
+    #    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    #       echo
+    #    read -p "Press Enter to continue..."
+    #    return
+    #fi
     
     # Determine service status
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
@@ -603,7 +603,7 @@ show_users() {
     
     if [[ ${#users[@]} -eq 0 ]]; then
         # Empty state with proper box formatting
-        echo -e "${CYAN}╭─ Users List (0 users) ─────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${CYAN}╭─ Users List (0 users) ────────────────────────────────────────────────────────╮${NC}"
         local warning_msg="No SOCKS5 users found."
         local warning_length=$((${#warning_msg} + 1))
         local warning_padding=$((78 - warning_length))
@@ -1035,7 +1035,7 @@ manage_add_users() {
         print_header
         print_section_header "Add Users Menu"
         
-    echo -e "${CYAN}╭─ Add Users Options ───────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}╭─ Add Users Options ──────────────────────────────────────────────────────────╮${NC}"
 
     local add_user_items=(
         "1. Add single user"
@@ -1284,26 +1284,25 @@ test_proxies() {
         
         # Test proxy first
         if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            local result_text="✓ SUCCESS"
-            local result_color="${GREEN}"
+            local result_text="${GREEN}✓ SUCCESS${NC}"
             ((success_count++))
         else
-            local result_text="✗ FAILED"
-            local result_color="${RED}"
+            local result_text="${RED}✗ FAILED${NC}"
         fi
         
-        # Calculate padding based on actual text length (without color codes)
+        # Calculate padding based on actual text length (không tính mã màu)
         local progress_len=${#progress_indicator}
         local proxy_len=${#display_proxy}
-        local result_len=${#result_text}
+        # Độ dài thực tế của result_text không tính mã màu
+        local result_len=8  # "✓ SUCCESS" hoặc "✗ FAILED" đều 8 ký tự
         
         # Total content: " " + progress + " " + proxy + " " + result + " "
         local total_content_len=$((1 + progress_len + 1 + proxy_len + 1 + result_len + 1))
         local padding=$((75 - total_content_len))
         
         # Print the formatted line
-        printf "${CYAN}│${NC} %s %-30s %s%s%*s${CYAN}│${NC}\n" \
-            "$progress_indicator" "$display_proxy" "$result_color" "$result_text" $padding ""
+        printf "${CYAN}│${NC} %s %-30s %b%*s${CYAN}│${NC}\n" \
+            "$progress_indicator" "$display_proxy" "$result_text" $padding ""
         
     done
 
