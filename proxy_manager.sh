@@ -376,7 +376,7 @@ check_service_status() {
         "2. Stop Service"           
         "3. View Full Logs"
         "4. Test Internet Bandwidth"
-        "5. Back to Main Menu"
+        "0. Back to Main Menu"
     )
 
     for item in "${control_items[@]}"; do
@@ -427,7 +427,7 @@ check_service_status() {
                 check_service_status
                 return
                 ;;
-            5)
+            0)
                 break
                 ;;
             *)
@@ -588,15 +588,15 @@ show_users() {
         # Empty state with proper box formatting
         echo -e "${CYAN}╭─ Users List (0 users) ────────────────────────────────────────────────────────╮${NC}"
         local warning_msg="No SOCKS5 users found."
-        local warning_length=$((${#warning_msg} + 1))
-        local warning_padding=$((77 - warning_length))
+        local warning_length=${#warning_msg}
+        local warning_padding=$((76 - warning_length))  # 78 total - 2 for borders = 76
         printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
         echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     else
         # Header with user count
         local header_title="Users List (${#users[@]} users)"
         local header_length=${#header_title}
-        local header_padding=$((76 - header_length))  # 78 - 6 (for "─ " and " ") = 69
+        local header_padding=$((73 - header_length))  # 78 - 5 (for "╭─ " and " ╮") = 73
         
         printf "${CYAN}╭─ %s" "$header_title"
         for ((i=0; i<$header_padding; i++)); do printf "─"; done
@@ -606,8 +606,8 @@ show_users() {
         for i in "${!users[@]}"; do
             local user_number=$(printf "%3d." $((i+1)))
             local user_display="$user_number ${users[i]}"
-            local user_length=$((${#user_display} + 1))  # +1 for leading space
-            local user_padding=$((78 - user_length))
+            local user_length=${#user_display}
+            local user_padding=$((76 - user_length))  # 78 - 2 for borders = 76
             
             printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
         done
@@ -1023,7 +1023,7 @@ manage_add_users() {
     local add_user_items=(
         "1. Add single user"
         "2. Add multiple users"
-        "3. Back to main menu"
+        "0. Back to main menu"
     )
 
     for item in "${add_user_items[@]}"; do
@@ -1040,7 +1040,7 @@ manage_add_users() {
         case $choice in
             1) add_single_user ;;
             2) add_multi_users ;;
-            3) break ;;
+            0) break ;;
             *) print_error "Invalid option!" ;;
         esac
     done
@@ -1436,7 +1436,7 @@ show_main_menu() {
         "5. Test Proxies"
         "6. Check Status & Monitoring"
         "7. Uninstall Danted"
-        "8. Exit"
+        "0. Exit"
     )
     
     for item in "${menu_items[@]}"; do
@@ -1480,7 +1480,7 @@ main() {
             5) test_proxies ;;
             6) check_service_status ;;
             7) uninstall_danted ;;
-            8) 
+            0) 
                 # Clear screen and show thank you message
                 clear
                 echo -e "${GREEN}╭─ Thank You ──────────────────────────────────────────────────────────────────╮${NC}"
