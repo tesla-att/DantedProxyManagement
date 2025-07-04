@@ -1299,7 +1299,7 @@ test_proxies() {
         
         # Total content: " " + progress + " " + proxy + " " + result + " "
         local total_content_len=$((1 + progress_len + 1 + proxy_len + 1 + result_len + 1))
-        local padding=$((75 - total_content_len))
+        local padding=$((70 - total_content_len))
         
         # Print the formatted line
         printf "${CYAN}│${NC} %s %-30s %b%*s${CYAN}│${NC}\n" \
@@ -1315,11 +1315,12 @@ test_proxies() {
     fi
     
     echo
-    echo -e "${CYAN}Test Summary:${NC}"
-    echo -e "  Total Proxies:   ${WHITE}$total_count${NC}"
-    echo -e "  Successful:      ${GREEN}$success_count${NC}"
-    echo -e "  Failed:          ${RED}$((total_count - success_count))${NC}"
-    echo -e "  Success Rate:    ${YELLOW}${success_rate}%${NC}"
+    echo -e "${CYAN}╭─ Test Summary ────────────────────────────────────────────────────────────────╮${NC}"
+    printf "${CYAN}│${NC} Total Proxies:   ${WHITE}%s${NC}%*s${CYAN}│${NC}\n" "$total_count" $((58 - ${#total_count})) ""
+    printf "${CYAN}│${NC} Successful:      ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$success_count" $((58 - ${#success_count})) ""
+    printf "${CYAN}│${NC} Failed:          ${RED}%s${NC}%*s${CYAN}│${NC}\n" "$((total_count - success_count))" $((58 - ${#success_count})) ""
+    printf "${CYAN}│${NC} Success Rate:    ${YELLOW}%s%%${NC}%*s${CYAN}│${NC}\n" "$success_rate" $((56 - ${#success_rate})) ""
+    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
     
     echo
     read -p "Press Enter to continue..."
