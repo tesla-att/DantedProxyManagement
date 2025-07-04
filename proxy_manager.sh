@@ -96,6 +96,8 @@ read_multiline_input() {
     echo -e "${GRAY}Enter data (empty line twice to finish):${NC}"
     
     local empty_count=0
+    local seen_lines=()
+    
     while true; do
         read -r line
         
@@ -107,9 +109,26 @@ read_multiline_input() {
         else
             empty_count=0
             if [[ -n "$line" ]]; then
-                items+=("$line")
-                ((line_count++))
-                print_color $GREEN "  ✓ [$line_count] $line"
+                # Trim whitespace
+                line=$(echo "$line" | xargs)
+                
+                # Check for duplicates
+                local is_duplicate=false
+                for seen_line in "${seen_lines[@]}"; do
+                    if [[ "$seen_line" == "$line" ]]; then
+                        is_duplicate=true
+                        break
+                    fi
+                done
+                
+                if [[ "$is_duplicate" == false ]]; then
+                    items+=("$line")
+                    seen_lines+=("$line")
+                    ((line_count++))
+                    print_color $GREEN "  ✓ [$line_count] $line"
+                else
+                    print_color $YELLOW "  ⚠ Duplicate skipped: $line"
+                fi
             fi
         fi
     done
@@ -1031,45 +1050,86 @@ test_proxies() {
         return
     fi
     
+    # Debug: Show what was actually captured
+    echo
+    echo -e "${PURPLE}Debug - Raw input captured:${NC}"
+    echo "\"$proxies_input\""
+    echo -e "${PURPLE}Debug - Line count in input: $(echo "$proxies_input" | wc -l)${NC}"
     echo
     
     # Parse proxies with better validation
     local proxies=()
     local line_num=0
     
+    # Process each line from input
     while IFS= read -r proxy_line; do
         ((line_num++))
+        
+        # Debug each line
+        echo -e "${PURPLE}Debug - Processing line $line_num: \"$proxy_line\"${NC}"
+        
         # Skip empty lines
-        [[ -z "$proxy_line" ]] && continue
+        if [[ -z "$proxy_line" ]]; then
+            echo -e "${PURPLE}Debug - Skipping empty line $line_num${NC}"
+            continue
+        fi
         
         # Trim whitespace
         proxy_line=$(echo "$proxy_line" | xargs)
         
-        if [[ -n "$proxy_line" ]]; then
-            # Simple validation: count colons and check basic format
-            local colon_count=$(echo "$proxy_line" | tr -cd ':' | wc -c)
+        # Skip if still empty after trim
+        if [[ -z "$proxy_line" ]]; then
+            echo -e "${PURPLE}Debug - Skipping empty line $line_num after trim${NC}"
+            continue
+        fi
+        
+        echo -e "${PURPLE}Debug - After trim: \"$proxy_line\"${NC}"
+        
+        # Simple validation: count colons and check basic format
+        local colon_count=$(echo "$proxy_line" | tr -cd ':' | wc -c)
+        echo -e "${PURPLE}Debug - Colon count: $colon_count${NC}"
+        
+        if [[ $colon_count -eq 3 ]]; then
+            # Split and validate components
+            IFS=':' read -r ip port user pass <<< "$proxy_line"
+            echo -e "${PURPLE}Debug - Components: ip=\"$ip\" port=\"$port\" user=\"$user\" pass=\"$pass\"${NC}"
             
-            if [[ $colon_count -eq 3 ]]; then
-                # Split and validate components
-                IFS=':' read -r ip port user pass <<< "$proxy_line"
-                
-                # Check if all components exist and port is numeric
-                if [[ -n "$ip" && -n "$port" && -n "$user" && -n "$pass" ]]; then
-                    if [[ "$port" =~ ^[0-9]+$ ]] && [[ $port -ge 1 ]] && [[ $port -le 65535 ]]; then
+            # Check if all components exist and port is numeric
+            if [[ -n "$ip" && -n "$port" && -n "$user" && -n "$pass" ]]; then
+                if [[ "$port" =~ ^[0-9]+$ ]] && [[ $port -ge 1 ]] && [[ $port -le 65535 ]]; then
+                    # Check for duplicates in proxies array
+                    local is_duplicate=false
+                    for existing_proxy in "${proxies[@]}"; do
+                        if [[ "$existing_proxy" == "$proxy_line" ]]; then
+                            is_duplicate=true
+                            break
+                        fi
+                    done
+                    
+                    if [[ "$is_duplicate" == false ]]; then
                         proxies+=("$proxy_line")
                         print_color $GREEN "  ✓ Valid: $proxy_line"
                     else
-                        print_error "  Invalid port on line $line_num: $proxy_line"
+                        print_color $YELLOW "  ⚠ Duplicate proxy skipped: $proxy_line"
                     fi
                 else
-                    print_error "  Missing components on line $line_num: $proxy_line"
+                    print_error "  Invalid port on line $line_num: $proxy_line"
                 fi
             else
-                print_error "  Invalid format on line $line_num: $proxy_line"
-                print_color $GRAY "    Expected format: IP:PORT:USERNAME:PASSWORD"
+                print_error "  Missing components on line $line_num: $proxy_line"
             fi
+        else
+            print_error "  Invalid format on line $line_num: $proxy_line"
+            print_color $GRAY "    Expected format: IP:PORT:USERNAME:PASSWORD"
         fi
+        
     done <<< "$proxies_input"
+    
+    echo -e "${PURPLE}Debug - Final proxies array count: ${#proxies[@]}${NC}"
+    for i in "${!proxies[@]}"; do
+        echo -e "${PURPLE}Debug - Proxy[$i]: \"${proxies[i]}\"${NC}"
+    done
+    echo
     
     if [[ ${#proxies[@]} -eq 0 ]]; then
         print_error "No valid proxies provided!"
@@ -1079,7 +1139,6 @@ test_proxies() {
         return
     fi
     
-    echo
     print_color $CYAN "Testing ${#proxies[@]} proxies..."
     echo
     
