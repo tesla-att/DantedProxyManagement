@@ -254,14 +254,14 @@ check_service_status() {
     echo -e "${CYAN}╭─ Danted Service Status ──────────────────────────────────────────────────────╮${NC}"
     
     # Check if service is running first
-    if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        local warning_msg="Danted service is not running. Please start it first."
-        local warning_content_length=$((${#warning_msg} + 1))
-        local warning_padding=$((78 - warning_content_length))
-        printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
-        echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-        echo
-    fi
+    #if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+    #    local warning_msg="Danted service is not running. Please start it first."
+    #    local warning_content_length=$((${#warning_msg} + 1))
+    #    local warning_padding=$((78 - warning_content_length))
+    #    printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
+    #       echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    #    echo
+    #fi
     
     # Determine service status
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
@@ -277,7 +277,7 @@ check_service_status() {
     # Service status line
     local service_display="${status_icon} ${status}"
     local service_content_length=$((14 + ${#service_display}))  # " Service:      " + display
-    local service_padding=$((77 - service_content_length))
+    local service_padding=$((75 - service_content_length))
     printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
     
     # Auto-start status
@@ -289,7 +289,7 @@ check_service_status() {
         local autostart_color=$RED
     fi
     local autostart_content_length=$((14 + ${#autostart_display}))  # " Auto-start:   " + display
-    local autostart_padding=$((77 - autostart_content_length))
+    local autostart_padding=$((75 - autostart_content_length))
     printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
     
     # Listen address
@@ -373,11 +373,10 @@ check_service_status() {
 
     local control_items=(
         "1. Restart Service"
-        "2. Stop Service"
-        "3. Start Service"
-        "4. View Full Logs"
-        "5. Test Internet Bandwidth"
-        "6. Back to Main Menu"
+        "2. Stop Service"           
+        "3. View Full Logs"
+        "4. Test Internet Bandwidth"
+        "5. Back to Main Menu"
     )
 
     for item in "${control_items[@]}"; do
@@ -414,19 +413,8 @@ check_service_status() {
                 sleep 2
                 check_service_status
                 return
-                ;;
+                ;;  
             3)
-                print_color $YELLOW "Starting Danted service..."
-                if systemctl start $DANTED_SERVICE; then
-                    print_success "Service started successfully!"
-                else
-                    print_error "Failed to start service!"
-                fi
-                sleep 2
-                check_service_status
-                return
-                ;;
-            4)
                 print_section_header "Full Service Logs"
                 journalctl -u $DANTED_SERVICE --no-pager -n 50
                 echo
@@ -434,12 +422,12 @@ check_service_status() {
                 check_service_status
                 return
                 ;;
-            5)
+            4)
                 test_bandwidth
                 check_service_status
                 return
                 ;;
-            6)
+            5)
                 break
                 ;;
             *)
