@@ -125,16 +125,19 @@ read_multiline_input() {
                     items+=("$line")
                     seen_lines+=("$line")
                     ((line_count++))
-                    print_color $GREEN "  ✓ [$line_count] $line"
+                    # Print feedback to stderr so it doesn't get captured in return value
+                    echo -e "  ✓ [$line_count] $line" >&2
                 else
-                    print_color $YELLOW "  ⚠ Duplicate skipped: $line"
+                    echo -e "  ⚠ Duplicate skipped: $line" >&2
                 fi
             fi
         fi
     done
     
-    # Return the items array
-    printf '%s\n' "${items[@]}"
+    # Return only the pure data - output to stdout
+    for item in "${items[@]}"; do
+        echo "$item"
+    done
 }
 
 # Function to get network interfaces with IPs
@@ -1042,7 +1045,10 @@ test_proxies() {
     
     # Read proxy list using multiline input
     local proxies_input
-    proxies_input=$(read_multiline_input "Enter proxy list:")
+    # Redirect stderr to display feedback, capture only stdout (pure data)
+    exec 3>&1 4>&2
+    proxies_input=$(read_multiline_input "Enter proxy list:" 2>&4)
+    exec 3>&- 4>&-
     
     if [[ -z "$proxies_input" ]]; then
         print_error "No proxies provided!"
@@ -1050,11 +1056,6 @@ test_proxies() {
         return
     fi
     
-    # Debug: Show what was actually captured
-    echo
-    echo -e "${PURPLE}Debug - Raw input captured:${NC}"
-    echo "\"$proxies_input\""
-    echo -e "${PURPLE}Debug - Line count in input: $(echo "$proxies_input" | wc -l)${NC}"
     echo
     
     # Parse proxies with better validation
@@ -1065,12 +1066,8 @@ test_proxies() {
     while IFS= read -r proxy_line; do
         ((line_num++))
         
-        # Debug each line
-        echo -e "${PURPLE}Debug - Processing line $line_num: \"$proxy_line\"${NC}"
-        
         # Skip empty lines
         if [[ -z "$proxy_line" ]]; then
-            echo -e "${PURPLE}Debug - Skipping empty line $line_num${NC}"
             continue
         fi
         
@@ -1079,20 +1076,15 @@ test_proxies() {
         
         # Skip if still empty after trim
         if [[ -z "$proxy_line" ]]; then
-            echo -e "${PURPLE}Debug - Skipping empty line $line_num after trim${NC}"
             continue
         fi
         
-        echo -e "${PURPLE}Debug - After trim: \"$proxy_line\"${NC}"
-        
         # Simple validation: count colons and check basic format
         local colon_count=$(echo "$proxy_line" | tr -cd ':' | wc -c)
-        echo -e "${PURPLE}Debug - Colon count: $colon_count${NC}"
         
         if [[ $colon_count -eq 3 ]]; then
             # Split and validate components
             IFS=':' read -r ip port user pass <<< "$proxy_line"
-            echo -e "${PURPLE}Debug - Components: ip=\"$ip\" port=\"$port\" user=\"$user\" pass=\"$pass\"${NC}"
             
             # Check if all components exist and port is numeric
             if [[ -n "$ip" && -n "$port" && -n "$user" && -n "$pass" ]]; then
@@ -1125,12 +1117,6 @@ test_proxies() {
         
     done <<< "$proxies_input"
     
-    echo -e "${PURPLE}Debug - Final proxies array count: ${#proxies[@]}${NC}"
-    for i in "${!proxies[@]}"; do
-        echo -e "${PURPLE}Debug - Proxy[$i]: \"${proxies[i]}\"${NC}"
-    done
-    echo
-    
     if [[ ${#proxies[@]} -eq 0 ]]; then
         print_error "No valid proxies provided!"
         echo
@@ -1139,6 +1125,7 @@ test_proxies() {
         return
     fi
     
+    echo
     print_color $CYAN "Testing ${#proxies[@]} proxies..."
     echo
     
