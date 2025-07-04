@@ -42,9 +42,9 @@ print_color() {
 print_header() {
     clear
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${WHITE}${BOLD}                        DANTED SOCKS5 PROXY MANAGER v2.0                       ${NC}${CYAN}║${NC}"
+    echo -e "${CYAN}║${WHITE}${BOLD}                        DANTED SOCKS5 PROXY MANAGER                           ${NC}${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${GRAY}                     Professional Proxy Management Tool                       ${NC}${CYAN}║${NC}"
+    echo -e "${CYAN}║${GRAY}                          Proxy Management Tool                              ${NC}${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo
 }
@@ -52,9 +52,9 @@ print_header() {
 # Function to print section header
 print_section_header() {
     local title=$1
-    echo -e "${BLUE}┌─────────────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${BLUE}┌──────────────────────────────────────────────────────────────────────────────┐${NC}"
     echo -e "${BLUE}│${WHITE}${BOLD} $title${NC}${BLUE}$(printf "%*s" $((77 - ${#title})) "")│${NC}"
-    echo -e "${BLUE}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo -e "${BLUE}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
 
@@ -62,9 +62,9 @@ print_section_header() {
 print_info_box() {
     local message=$1
     local color=${2:-$CYAN}
-    echo -e "${color}┌─ INFO ──────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${color}┌─ INFO ───────────────────────────────────────────────────────────────────────┐${NC}"
     echo -e "${color}│${NC} $message"
-    echo -e "${color}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo -e "${color}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
 
@@ -171,12 +171,12 @@ get_system_info() {
     local disk_usage=$(df -h / | tail -1 | awk '{print $5}')
     local uptime=$(uptime -p)
     
-    echo -e "${CYAN}╭─ System Information ───────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}╭─ System Information ─────────────────────────────────────────────────────────────╮${NC}"
     printf "${CYAN}│${NC} CPU Usage:    ${GREEN}%-10s${NC}%*s${CYAN}│${NC}\n" "$cpu_usage%" $((60 - ${#cpu_usage})) ""
-    printf "${CYAN}│${NC} Memory:       ${GREEN}%-10s${NC} / ${GREEN}%-10s${NC}%*s${CYAN}│${NC}\n" "$memory_used" "$memory_total" $((40 - ${#memory_used} - ${#memory_total})) ""
+    printf "${CYAN}│${NC} Memory:       ${GREEN}%-10s${NC} / ${GREEN}%-10s${NC}%*s${CYAN}          │${NC}\n" "$memory_used" "$memory_total" $((40 - ${#memory_used} - ${#memory_total})) ""
     printf "${CYAN}│${NC} Disk Usage:   ${GREEN}%-10s${NC}%*s${CYAN}│${NC}\n" "$disk_usage" $((60 - ${#disk_usage})) ""
-    printf "${CYAN}│${NC} Uptime:       ${GREEN}%-30s${NC}%*s${CYAN}│${NC}\n" "$uptime" $((40 - ${#uptime})) ""
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    printf "${CYAN}│${NC} Uptime:       ${GREEN}%-30s${NC}%*s${CYAN}                  │${NC}\n" "$uptime" $((40 - ${#uptime})) ""
+    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────────╯${NC}"
 }
 
 # Function to check service status
@@ -185,7 +185,7 @@ check_service_status() {
     print_section_header "Service Status & System Monitoring"
     
     # Service status
-    echo -e "${CYAN}╭─ Danted Service Status ─────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}╭─ Danted Service Status ─────────────────────────────────────────────────────────╮${NC}"
     
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
         local status="RUNNING"
@@ -202,7 +202,7 @@ check_service_status() {
     if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
         printf "${CYAN}│${NC} Auto-start:   ${GREEN}● ENABLED${NC}%*s${CYAN}│${NC}\n" 54 ""
     else
-        printf "${CYAN}│${NC} Auto-start:   ${RED}● DISABLED${NC}%*s${CYAN}│${NC}\n" 53 ""
+        printf "${CYAN}│${NC} Auto-start:   ${RED}● DISABLED${NC}%*s${CYAN}  │${NC}\n" 53 ""
     fi
     
     # Get port and IP if config exists
@@ -212,7 +212,7 @@ check_service_status() {
         printf "${CYAN}│${NC} Listen on:    ${YELLOW}%-20s${NC}%*s${CYAN}│${NC}\n" "$config_ip:$config_port" $((50 - ${#config_ip} - ${#config_port})) ""
     fi
     
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────────╯${NC}"
     echo
     
     # System information
