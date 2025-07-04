@@ -261,8 +261,6 @@ check_service_status() {
         printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
         echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
         echo
-        read -p "Press Enter to continue..."
-        return
     fi
     
     # Determine service status
@@ -279,7 +277,7 @@ check_service_status() {
     # Service status line
     local service_display="${status_icon} ${status}"
     local service_content_length=$((14 + ${#service_display}))  # " Service:      " + display
-    local service_padding=$((79 - service_content_length))
+    local service_padding=$((77 - service_content_length))
     printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
     
     # Auto-start status
@@ -291,7 +289,7 @@ check_service_status() {
         local autostart_color=$RED
     fi
     local autostart_content_length=$((14 + ${#autostart_display}))  # " Auto-start:   " + display
-    local autostart_padding=$((79 - autostart_content_length))
+    local autostart_padding=$((77 - autostart_content_length))
     printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
     
     # Listen address
@@ -336,17 +334,6 @@ check_service_status() {
     # Recent logs - Fixed width with rounded corners
     echo -e "${CYAN}╭─ Recent Service Logs ────────────────────────────────────────────────────────╮${NC}"
     
-    if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        local log_warning="Danted service is not running. No logs available."
-        local log_warning_length=$((${#log_warning} + 1))
-        local log_warning_padding=$((78 - log_warning_length))
-        printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$log_warning" $log_warning_padding ""
-        echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-        echo
-        read -p "Press Enter to continue..."
-        return
-    fi
-    
     # Log header
     local log_header="Last 3 logs from the last hour:"
     local log_header_length=$((${#log_header} + 1))
@@ -354,21 +341,28 @@ check_service_status() {
     printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$log_header" $log_header_padding ""
     
     # Display logs
-    if journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | grep -q "."; then
-        journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | while read -r line; do
-            # Truncate long log lines to fit in box
-            if [[ ${#line} -gt 73 ]]; then
-                line="${line:0:70}..."
-            fi
-            local line_length=$((${#line} + 1))
-            local line_padding=$((78 - line_length))
-            printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$line" $line_padding ""
-        done
+    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+        if journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | grep -q "."; then
+            journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | while read -r line; do
+                # Truncate long log lines to fit in box
+                if [[ ${#line} -gt 73 ]]; then
+                    line="${line:0:70}..."
+                fi
+                local line_length=$((${#line} + 1))
+                local line_padding=$((78 - line_length))
+                printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$line" $line_padding ""
+            done
+        else
+            local no_logs="No recent logs found"
+            local no_logs_length=$((${#no_logs} + 1))
+            local no_logs_padding=$((78 - no_logs_length))
+            printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$no_logs" $no_logs_padding ""
+        fi
     else
-        local no_logs="No recent logs found"
-        local no_logs_length=$((${#no_logs} + 1))
-        local no_logs_padding=$((78 - no_logs_length))
-        printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$no_logs" $no_logs_padding ""
+        local log_warning="Danted service is not running. No logs available."
+        local log_warning_length=$((${#log_warning} + 1))
+        local log_warning_padding=$((78 - log_warning_length))
+        printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$log_warning" $log_warning_padding ""
     fi
     
     echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
