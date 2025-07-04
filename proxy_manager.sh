@@ -1493,7 +1493,8 @@ main() {
             6) check_service_status ;;
             7) uninstall_danted ;;
             8) 
-                # Thank you message with box formatting
+                # Clear screen and show thank you message
+                clear
                 echo -e "${GREEN}╭─ Thank You ──────────────────────────────────────────────────────────────────╮${NC}"
                 local thank_msg="Thank you for using Danted SOCKS5 Proxy Manager!"
                 local thank_length=$((${#thank_msg} + 1))
