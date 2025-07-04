@@ -93,8 +93,6 @@ read_multiline_input() {
     local line_count=0
     
     print_color $YELLOW "$prompt"
-    print_info_box "You can paste multiple lines at once. Enter empty line twice to finish."
-    
     echo -e "${GRAY}Enter data (empty line twice to finish):${NC}"
     
     local empty_count=0
@@ -1016,11 +1014,11 @@ test_proxies() {
     print_header
     print_section_header "Test Proxies"
     
-    # Show format example
-    print_info_box "Enter proxy details in format: IP:PORT:USERNAME:PASSWORD"
+    # Show format example clearly
+    echo -e "${YELLOW}Format: ${WHITE}IP:PORT:USERNAME:PASSWORD${NC}"
     echo -e "${GRAY}Example:${NC}"
-    echo -e "  ${YELLOW}103.195.238.251:30202:user1:pass123${NC}"
-    echo -e "  ${YELLOW}192.168.1.100:1080:alice:secret456${NC}"
+    echo -e "  ${CYAN}103.195.238.251:30202:user1:pass123${NC}"
+    echo -e "  ${CYAN}192.168.1.100:1080:alice:secret456${NC}"
     echo
     
     # Read proxy list using multiline input
@@ -1033,10 +1031,11 @@ test_proxies() {
         return
     fi
     
-    # Parse proxies
+    echo
+    
+    # Parse proxies with better validation
     local proxies=()
     local line_num=0
-    echo -e "${CYAN}Validating proxy format...${NC}"
     
     while IFS= read -r proxy_line; do
         ((line_num++))
@@ -1047,21 +1046,27 @@ test_proxies() {
         proxy_line=$(echo "$proxy_line" | xargs)
         
         if [[ -n "$proxy_line" ]]; then
-            # Count colons - should be exactly 3 for IP:PORT:USERNAME:PASSWORD
-            local colon_count=$(echo "$proxy_line" | grep -o ":" | wc -l)
+            # Simple validation: count colons and check basic format
+            local colon_count=$(echo "$proxy_line" | tr -cd ':' | wc -c)
+            
             if [[ $colon_count -eq 3 ]]; then
-                # Additional validation: check if port is numeric
-                local port_part=$(echo "$proxy_line" | cut -d':' -f2)
-                if [[ "$port_part" =~ ^[0-9]+$ ]] && [[ $port_part -ge 1 ]] && [[ $port_part -le 65535 ]]; then
-                    proxies+=("$proxy_line")
-                    print_color $GREEN "  ✓ Valid: $proxy_line"
+                # Split and validate components
+                IFS=':' read -r ip port user pass <<< "$proxy_line"
+                
+                # Check if all components exist and port is numeric
+                if [[ -n "$ip" && -n "$port" && -n "$user" && -n "$pass" ]]; then
+                    if [[ "$port" =~ ^[0-9]+$ ]] && [[ $port -ge 1 ]] && [[ $port -le 65535 ]]; then
+                        proxies+=("$proxy_line")
+                        print_color $GREEN "  ✓ Valid: $proxy_line"
+                    else
+                        print_error "  Invalid port on line $line_num: $proxy_line"
+                    fi
                 else
-                    print_error "Invalid port number on line $line_num: $proxy_line"
-                    print_color $GRAY "  Port must be between 1-65535"
+                    print_error "  Missing components on line $line_num: $proxy_line"
                 fi
             else
-                print_error "Invalid format on line $line_num: $proxy_line"
-                print_color $GRAY "  Expected: IP:PORT:USERNAME:PASSWORD (exactly 3 colons)"
+                print_error "  Invalid format on line $line_num: $proxy_line"
+                print_color $GRAY "    Expected format: IP:PORT:USERNAME:PASSWORD"
             fi
         fi
     done <<< "$proxies_input"
@@ -1075,60 +1080,53 @@ test_proxies() {
     fi
     
     echo
-    print_info_box "Testing ${#proxies[@]} proxies..."
+    print_color $CYAN "Testing ${#proxies[@]} proxies..."
     echo
     
     local success_count=0
     local total_count=${#proxies[@]}
     
-    # Progress header
-    echo -e "${CYAN}╭─ Proxy Test Results ────────────────────────────────────────────────────────╮${NC}"
+    # Simple progress display without complex borders
+    echo -e "${CYAN}Proxy Test Results:${NC}"
+    echo "────────────────────────────────────────────────────────────────────────────"
     
     for i in "${!proxies[@]}"; do
         local proxy="${proxies[i]}"
         
         # Parse proxy components
-        local ip port user pass
         IFS=':' read -r ip port user pass <<< "$proxy"
-        
-        # Validate extracted components
-        if [[ -z "$ip" || -z "$port" || -z "$user" || -z "$pass" ]]; then
-            printf "${CYAN}│${NC} [%2d/%2d] %-30s ${RED}✗ INVALID${NC}%*s${CYAN}│${NC}\n" $((i+1)) $total_count "$proxy" $((35 - ${#proxy})) ""
-            continue
-        fi
         
         local curl_proxy="socks5://$user:$pass@$ip:$port"
         
         # Test with timeout
         local display_proxy="${ip}:${port}@${user}"
-        if [[ ${#display_proxy} -gt 30 ]]; then
-            display_proxy="${display_proxy:0:27}..."
+        if [[ ${#display_proxy} -gt 35 ]]; then
+            display_proxy="${display_proxy:0:32}..."
         fi
         
-        printf "${CYAN}│${NC} [%2d/%2d] %-30s " $((i+1)) $total_count "$display_proxy"
+        printf "[%2d/%2d] %-35s " $((i+1)) $total_count "$display_proxy"
         
         if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            printf "${GREEN}✓ SUCCESS${NC}%*s${CYAN}│${NC}\n" $((35 - ${#display_proxy})) ""
+            printf "${GREEN}✓ SUCCESS${NC}\n"
             ((success_count++))
         else
-            printf "${RED}✗ FAILED${NC}%*s${CYAN}│${NC}\n" $((36 - ${#display_proxy})) ""
+            printf "${RED}✗ FAILED${NC}\n"
         fi
     done
     
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo "────────────────────────────────────────────────────────────────────────────"
     
-    echo
     local success_rate=0
     if [[ $total_count -gt 0 ]]; then
         success_rate=$((success_count * 100 / total_count))
     fi
     
-    echo -e "${CYAN}╭─ Test Summary ──────────────────────────────────────────────────────────────╮${NC}"
-    printf "${CYAN}│${NC} Total Proxies:   ${WHITE}%-10d${NC}%*s${CYAN}│${NC}\n" $total_count $((60 - ${#total_count})) ""
-    printf "${CYAN}│${NC} Successful:      ${GREEN}%-10d${NC}%*s${CYAN}│${NC}\n" $success_count $((60 - ${#success_count})) ""
-    printf "${CYAN}│${NC} Failed:          ${RED}%-10d${NC}%*s${CYAN}│${NC}\n" $((total_count - success_count)) $((60 - ${#total_count} - ${#success_count})) ""
-    printf "${CYAN}│${NC} Success Rate:    ${YELLOW}%-10s${NC}%*s${CYAN}│${NC}\n" "${success_rate}%" $((60 - ${#success_rate})) ""
-    echo -e "${CYAN}╰─────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo
+    echo -e "${CYAN}Test Summary:${NC}"
+    echo -e "  Total Proxies:   ${WHITE}$total_count${NC}"
+    echo -e "  Successful:      ${GREEN}$success_count${NC}"
+    echo -e "  Failed:          ${RED}$((total_count - success_count))${NC}"
+    echo -e "  Success Rate:    ${YELLOW}${success_rate}%${NC}"
     
     echo
     read -p "Press Enter to continue..."
