@@ -291,83 +291,45 @@ check_service_status() {
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 
-    # Service status - Fixed width box with rounded corners
-    echo -e "${CYAN}┌─ Danted Service Status ──────────────────────────────────────────────────────┐${NC}"
+show_service_status_progress() {
+    echo -e "${CYAN}┌─ Service Health Check ───────────────────────────────────────────────────────┐${NC}"
     
-    # Check if service is running first
-    #if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-    #    local warning_msg="Danted service is not running. Please start it first."
-    #    local warning_content_length=$((${#warning_msg} + 1))
-    #    local warning_padding=$((78 - warning_content_length))
-    #    printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
-    #       echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-    #    echo
-    #fi
-    
-    # Determine service status
+    # Service running check
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        local status="RUNNING"
-        local color=$GREEN
-        local status_icon="●"
+        echo -e "${CYAN}│${NC} Service Running    ${GREEN}████████████████████████████████${NC} ${GREEN}✓${NC}   ${CYAN}│${NC}"
     else
-        local status="STOPPED"
-        local color=$RED
-        local status_icon="●"
+        echo -e "${CYAN}│${NC} Service Running    ${RED}████████████████████████████████${NC} ${RED}✗${NC}   ${CYAN}│${NC}"
     fi
     
-    # Service status line
-    local service_display="${status_icon} ${status}"
-    local service_content_length=$((14 + ${#service_display}))  # " Service:      " + display
-    local service_padding=$((78 - service_content_length))
-    printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
-    
-    # Auto-start status
+    # Auto-start check
     if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
-        local autostart_display="● ENABLED"
-        local autostart_color=$GREEN
+        echo -e "${CYAN}│${NC} Auto-start Enabled ${GREEN}████████████████████████████████${NC} ${GREEN}✓${NC}   ${CYAN}│${NC}"
     else
-        local autostart_display="● DISABLED"
-        local autostart_color=$RED
+        echo -e "${CYAN}│${NC} Auto-start Enabled ${RED}████████████████████████████████${NC} ${RED}✗${NC}   ${CYAN}│${NC}"
     fi
-    local autostart_content_length=$((14 + ${#autostart_display}))  # " Auto-start:   " + display
-    local autostart_padding=$((78 - autostart_content_length))
-    printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
     
-    # Listen address
+    # Configuration check
     if [[ -f "$DANTED_CONFIG" ]]; then
-        local config_ip=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}' 2>/dev/null || echo "N/A")
-        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null || echo "N/A")
-        local listen_address="${config_ip}:${config_port}"
-        
-        # Truncate if too long
-        if [[ ${#listen_address} -gt 25 ]]; then
-            listen_address="${listen_address:0:22}..."
+        echo -e "${CYAN}│${NC} Configuration      ${GREEN}████████████████████████████████${NC} ${GREEN}✓${NC}   ${CYAN}│${NC}"
+    else
+        echo -e "${CYAN}│${NC} Configuration      ${RED}████████████████████████████████${NC} ${RED}✗${NC}   ${CYAN}│${NC}"
+    fi
+    
+    # Connection status
+    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+        local connections=$(netstat -tn 2>/dev/null | grep ":1080 " | wc -l 2>/dev/null || echo "0")
+        if [[ $connections -gt 0 ]]; then
+            echo -e "${CYAN}│${NC} Active Connections ${BLUE}████████████████████████████████${NC} ${connections}  ${CYAN}│${NC}"
+        else
+            echo -e "${CYAN}│${NC} Active Connections ${GRAY}████████████████████████████████${NC} 0  ${CYAN}│${NC}"
         fi
     else
-        local listen_address="Not configured"
+        echo -e "${CYAN}│${NC} Active Connections ${GRAY}████████████████████████████████${NC} -  ${CYAN}│${NC}"
     fi
-    local listen_content_length=$((14 + ${#listen_address}))  # " Listen on:    " + display
-    local listen_padding=$((77 - listen_content_length))
-    local listen_color=$([[ "$listen_address" == "Not configured" ]] && echo "$GRAY" || echo "$YELLOW")
-    printf "${CYAN}│${NC} Listen on:    ${listen_color}%s${NC}%*s${CYAN}│${NC}\n" "$listen_address" $listen_padding ""
-    
-    # Active connections
-    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null && [[ -f "$DANTED_CONFIG" ]]; then
-        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null)
-        local connections=$(netstat -tn 2>/dev/null | grep ":$config_port " | wc -l 2>/dev/null || echo "0")
-        local conn_display="${connections} active"
-        local conn_color=$BLUE
-    else
-        local conn_display="N/A"
-        local conn_color=$GRAY
-    fi
-    local conn_content_length=$((14 + ${#conn_display}))  # " Connections:  " + display
-    local conn_padding=$((77 - conn_content_length))
-    printf "${CYAN}│${NC} Connections:  ${conn_color}%s${NC}%*s${CYAN}│${NC}\n" "$conn_display" $conn_padding ""
     
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
-
+}
     # Control options with box formatting
     echo -e "${YELLOW}┌─ Control Options ────────────────────────────────────────────────────────────┐${NC}"
 
