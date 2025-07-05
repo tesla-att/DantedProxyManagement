@@ -98,7 +98,7 @@ read_multiline_input() {
     local line_count=0
     
     print_color $YELLOW "$prompt"
-    echo -e "${GRAY}Enter data (empty line twice to finish):${NC}"
+    echo -e "${GRAY}Enter data (Enter 1 user per line, press Enter twice to finish):${NC}"
     
     local empty_count=0
     local seen_lines=()
@@ -276,7 +276,7 @@ check_service_status() {
     
     # Service status line
     local service_display="${status_icon} ${status}"
-    local service_content_length=$((14 + ${#service_display}))  # " Service:      " + display
+    local service_content_length=$((16 + ${#service_display}))  # " Service:      " + display
     local service_padding=$((78 - service_content_length))
     printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
     
@@ -288,7 +288,7 @@ check_service_status() {
         local autostart_display="● DISABLED"
         local autostart_color=$RED
     fi
-    local autostart_content_length=$((14 + ${#autostart_display}))  # " Auto-start:   " + display
+    local autostart_content_length=$((16 + ${#autostart_display}))  # " Auto-start:   " + display
     local autostart_padding=$((78 - autostart_content_length))
     printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
     
@@ -507,7 +507,7 @@ install_danted() {
     done
     
     echo
-    print_info_box "Installing Danted SOCKS5 Proxy Server..."
+    print_info_box "Installing Danted SOCKS5 Proxy Server. Please wait..."
     
     # Update package list
     echo -e "${GRAY}Updating package list...${NC}"
@@ -1029,7 +1029,7 @@ manage_add_users() {
     for item in "${add_user_items[@]}"; do
         local item_length=$((${#item} + 1))  # +1 for leading space
         local item_padding=$((78 - item_length))
-        printf "${CYAN}│${NC} ${CYAN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
+        printf "${CYAN}│${NC} ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
     done
 
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
@@ -1146,10 +1146,9 @@ test_proxies() {
     # Show format example clearly
     echo -e "${YELLOW}Format: ${WHITE}IP:PORT:USERNAME:PASSWORD${NC}"
     echo -e "${GRAY}Example:${NC}"
-    echo -e "  ${CYAN}100.150.200.
-    250:30500:user1:pass123${NC}"
+    echo -e "  ${CYAN}100.150.200.250:30500:user1:pass123${NC}"
     echo -e "  ${CYAN}192.168.1.100:1080:alice:secret456${NC}"
-    echo -e "${GRAY}Enter one proxy per line, leave empty line to finish.${NC}"
+    echo -e "${GRAY}Enter one proxy per line, Press Enter twice to finish.${NC}"
     echo
     
     # Read proxy list using multiline input
@@ -1286,7 +1285,7 @@ test_proxies() {
         local padding=$((70 - total_content_len))
         
         # Print the formatted line
-        printf "${CYAN}│${NC} %s %-30s %b%*s${CYAN}│${NC}\n" \
+        printf "${CYAN}${NC} %s %-30s %b%*s${CYAN}${NC}\n" \
             "$progress_indicator" "$display_proxy" "$result_text" $padding ""
         
     done
@@ -1299,7 +1298,7 @@ test_proxies() {
     fi
     
     echo
-    echo -e "${CYAN}┌─ Test Summary ────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${CYAN}┌─ Test Summary ───────────────────────────────────────────────────────────────┐${NC}"
 
     # Total Proxies
     local total_text="Total Proxies: $total_count"
