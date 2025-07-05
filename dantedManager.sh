@@ -383,9 +383,9 @@ check_service_status() {
     local control_items=(
         "1. Restart Service"
         "2. Stop Service"           
-        "3. View Full Logs"
+        "3. Change Port"
         "4. Test Internet Bandwidth"
-        "5. Change Port"
+        "5. Full Service Logs"
         "6. Back to Main Menu"
     )
 
@@ -425,10 +425,7 @@ check_service_status() {
                 return
                 ;;  
             3)
-                print_section_header "Full Service Logs"
-                journalctl -u $DANTED_SERVICE --no-pager -n 50
-                echo
-                read -p "Press Enter to continue..."
+                change_port
                 check_service_status
                 return
                 ;;
@@ -438,7 +435,10 @@ check_service_status() {
                 return
                 ;;
             5)
-                change_port
+                print_section_header "Full Service Logs"
+                journalctl -u $DANTED_SERVICE --no-pager -n 50
+                echo
+                read -p "Press Enter to continue..."
                 check_service_status
                 return
                 ;;
