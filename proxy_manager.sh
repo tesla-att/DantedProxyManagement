@@ -1086,18 +1086,6 @@ delete_users() {
         return
     fi
     
-    echo -e "${CYAN}┌─ Available Users to Delete ──────────────────────────────────────────────────┐${NC}"
-    for i in "${!users[@]}"; do
-        local user_number=$(printf "%3d." $((i+1)))
-        local user_display="$user_number ${users[i]}"
-        local user_length=$((${#user_display} + 1))  # +1 for leading space
-        local user_padding=$((78 - user_length))
-        
-        printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
-    done
-    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
-    echo
-    
     local to_delete=()
     for selection in $selections; do
         if [[ "$selection" =~ ^[0-9]+$ ]] && [[ $selection -ge 1 ]] && [[ $selection -le ${#users[@]} ]]; then
