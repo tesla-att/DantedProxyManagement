@@ -276,8 +276,8 @@ check_service_status() {
     
     # Service status line
     local service_display="${status_icon} ${status}"
-    local service_content_length=$((16 + ${#service_display}))  # " Service:      " + display
-    local service_padding=$((78 - service_content_length))
+    local service_content_length=$((14 + ${#service_display}))  # " Service:      " + display
+    local service_padding=$((77 - service_content_length))
     printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
     
     # Auto-start status
@@ -288,8 +288,8 @@ check_service_status() {
         local autostart_display="● DISABLED"
         local autostart_color=$RED
     fi
-    local autostart_content_length=$((16 + ${#autostart_display}))  # " Auto-start:   " + display
-    local autostart_padding=$((78 - autostart_content_length))
+    local autostart_content_length=$((14 + ${#autostart_display}))  # " Auto-start:   " + display
+    local autostart_padding=$((77 - autostart_content_length))
     printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
     
     # Listen address
