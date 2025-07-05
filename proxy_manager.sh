@@ -1065,7 +1065,6 @@ delete_users() {
     fi
 
     print_info_box "Enter user numbers to delete (space-separated, e.g., '1 3 5'):"
-    read -p "$(echo -e "${YELLOW}❯${NC} Selection: ")" selections
     
     if [[ -z "$selections" ]]; then
         print_warning "No selection made."
@@ -1083,7 +1082,7 @@ delete_users() {
         printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
     done
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
-    
+    read -p "$(echo -e "${YELLOW}❯${NC} Selection: ")" selections
     echo
     
     local to_delete=()
