@@ -198,8 +198,25 @@ get_network_interfaces() {
     return 0
 }
 
-# Function to get system info
-get_system_info() {
+#!/bin/bash
+
+# Color definitions
+CYAN='\033[1;36m'
+GREEN='\033[1;32m'
+RED='\033[1;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Function to display system information with Dante status
+show_system_info() {
+    # Thu thập thông tin hệ thống (giả sử đã có sẵn)
+    cpu_usage=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}' | cut -d. -f1)
+    memory_info=$(free -h | grep '^Mem:')
+    memory_used=$(echo $memory_info | awk '{print $3}')
+    memory_total=$(echo $memory_info | awk '{print $2}')
+    disk_usage=$(df -h / | awk 'NR==2 {print $5}')
+    uptime_info=$(uptime -p | sed 's/up //')
+    
     # Thêm các biến để thu thập thông tin Dante
     dante_status="Unknown"
     auto_start_status="Unknown"
@@ -207,9 +224,9 @@ get_system_info() {
     active_connections="0"
 
     # Kiểm tra trạng thái Dante service
-    if systemctl is-active --quiet danted; then
+    if systemctl is-active --quiet danted 2>/dev/null; then
         dante_status="Running"
-    elif systemctl is-failed --quiet danted; then
+    elif systemctl is-failed --quiet danted 2>/dev/null; then
         dante_status="Failed"
     else
         dante_status="Stopped"
@@ -230,91 +247,78 @@ get_system_info() {
         fi
     else
         # Fallback: kiểm tra từ netstat
-        listen_address=$(netstat -tlnp 2>/dev/null | grep danted | head -1 | awk '{print $4}' | cut -d: -f2)
-        if [ -z "$listen_address" ]; then
+        listen_port=$(netstat -tlnp 2>/dev/null | grep danted | head -1 | awk '{print $4}' | cut -d: -f2)
+        if [ -z "$listen_port" ]; then
             listen_address="Not found"
         else
-            listen_address="0.0.0.0:$listen_address"
+            listen_address="0.0.0.0:$listen_port"
         fi
     fi
 
     # Đếm số kết nối active
     if command -v ss >/dev/null 2>&1; then
-        active_connections=$(ss -tn | grep -c ":1080\|:8080\|:3128" 2>/dev/null || echo "0")
+        active_connections=$(ss -tn 2>/dev/null | grep -c ":1080\|:8080\|:3128" || echo "0")
     elif command -v netstat >/dev/null 2>&1; then
         active_connections=$(netstat -tn 2>/dev/null | grep -c ":1080\|:8080\|:3128" || echo "0")
     fi
 
+    # Function to print formatted line
+    print_info_line() {
+        local label="$1"
+        local value="$2"
+        local color="$3"
+        local content_length=$((${#label} + ${#value} + 3)) # label + ": " + value
+        local padding=$((77 - content_length))
+        printf "${CYAN}│${NC} %s: ${color}%s${NC}%*s${CYAN}│${NC}\n" "$label" "$value" $padding ""
+    }
+
+    # Header
     echo -e "${CYAN}┌─ System Information ─────────────────────────────────────────────────────────┐${NC}"
 
-    # CPU Usage - fixed width formatting
-    local cpu_display="${cpu_usage}%"
-    local cpu_content_length=$((14 + ${#cpu_display})) # " CPU Usage: " + display
-    local cpu_padding=$((77 - cpu_content_length))
-    printf "${CYAN}│${NC} CPU Usage: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$cpu_display" $cpu_padding ""
-
-    # Memory - fixed width formatting
-    local memory_display="${memory_used} / ${memory_total}"
+    # System Information
+    print_info_line "CPU Usage" "${cpu_usage}%" "${GREEN}"
+    
+    # Memory formatting
+    memory_display="${memory_used} / ${memory_total}"
     if [[ ${#memory_display} -gt 25 ]]; then
         memory_display="${memory_used}/${memory_total}"
     fi
-    local memory_content_length=$((14 + ${#memory_display})) # " Memory: " + display
-    local memory_padding=$((77 - memory_content_length))
-    printf "${CYAN}│${NC} Memory: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$memory_display" $memory_padding ""
+    print_info_line "Memory" "$memory_display" "${GREEN}"
+    
+    print_info_line "Disk Usage" "$disk_usage" "${GREEN}"
+    print_info_line "Uptime" "$uptime_info" "${GREEN}"
 
-    # Disk Usage - fixed width formatting
-    local disk_content_length=$((14 + ${#disk_usage})) # " Disk Usage: " + display
-    local disk_padding=$((77 - disk_content_length))
-    printf "${CYAN}│${NC} Disk Usage: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$disk_usage" $disk_padding ""
-
-    # Uptime - fixed width formatting
-    local uptime_content_length=$((14 + ${#uptime_info})) # " Uptime: " + display
-    local uptime_padding=$((77 - uptime_content_length))
-    printf "${CYAN}│${NC} Uptime: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$uptime_info" $uptime_padding ""
-
-    # Thêm separator line
+    # Separator
     echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${NC}"
 
-    # Dante Status - fixed width formatting
-    local dante_color="${GREEN}"
+    # Dante Information
+    dante_color="${GREEN}"
     if [ "$dante_status" != "Running" ]; then
         dante_color="${RED}"
     fi
-    local dante_content_length=$((16 + ${#dante_status})) # " Dante Status: " + display
-    local dante_padding=$((77 - dante_content_length))
-    printf "${CYAN}│${NC} Dante Status: ${dante_color}%s${NC}%*s${CYAN}│${NC}\n" "$dante_status" $dante_padding ""
+    print_info_line "Dante Status" "$dante_status" "$dante_color"
 
-    # Auto-start Status - fixed width formatting
-    local autostart_color="${GREEN}"
+    autostart_color="${GREEN}"
     if [ "$auto_start_status" != "Enabled" ]; then
         autostart_color="${YELLOW}"
     fi
-    local autostart_content_length=$((19 + ${#auto_start_status})) # " Auto-start Status: " + display
-    local autostart_padding=$((77 - autostart_content_length))
-    printf "${CYAN}│${NC} Auto-start Status: ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$auto_start_status" $autostart_padding ""
+    print_info_line "Auto-start Status" "$auto_start_status" "$autostart_color"
 
-    # Listen Address - fixed width formatting
-    local listen_content_length=$((17 + ${#listen_address})) # " Listen Address: " + display
-    local listen_padding=$((77 - listen_content_length))
-    printf "${CYAN}│${NC} Listen Address: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$listen_address" $listen_padding ""
+    print_info_line "Listen Address" "$listen_address" "${GREEN}"
+    print_info_line "Active Connections" "$active_connections" "${GREEN}"
 
-    # Active Connections - fixed width formatting
-    local connections_display="${active_connections}"
-    local connections_content_length=$((21 + ${#connections_display})) # " Active Connections: " + display
-    local connections_padding=$((77 - connections_content_length))
-    printf "${CYAN}│${NC} Active Connections: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$connections_display" $connections_padding ""
-
-    # Footer with fixed width
+    # Footer
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
 }
+
 
 # Function to check service status
 check_service_status() {
     print_header
     print_section_header "Service Status & System Monitoring"
        
-    # System information
-    get_system_info
+    # Call the function
+    show_system_info
     echo
     
     # Recent logs - Fixed width with rounded corners
