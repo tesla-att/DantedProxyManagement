@@ -675,7 +675,7 @@ test_proxy_speeds() {
     
     # Legend
     echo
-    echo -e "${GRAY}Legend:${NC}"
+    echo -e "${GRAY}Explanation:${NC}"
     echo -e "  ${GREEN}Green${NC}: 80-100% of direct speed"
     echo -e "  ${YELLOW}Yellow${NC}: 50-79% of direct speed"
     echo -e "  ${RED}Red${NC}: Below 50% of direct speed"
