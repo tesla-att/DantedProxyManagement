@@ -312,7 +312,7 @@ show_system_info() {
     fi
     print_info_line "Auto-start Status" "$auto_start_status" "$autostart_color"
 
-    print_info_line "Listen Address" "$listen_address"":""$listen_port"     "${GREEN}"
+    print_info_line "Listen Address" "$listen_address"    "${GREEN}"
     print_info_line "Active Connections" "$active_connections" "${GREEN}"
 
     # Footer
@@ -593,7 +593,7 @@ show_users() {
         # Header with user count
         local header_title="Users List (${#users[@]} users)"
         local header_length=${#header_title}
-        local header_padding=$((75 - header_length))  # 78 - 6 (for "─ " and " ") = 69
+        local header_padding=$((78 - header_length))  # 78 - 6 (for "─ " and " ") = 69
 
         printf "${CYAN}┌ %s" "$header_title"
         for ((i=0; i<$header_padding; i++)); do printf "─"; done
