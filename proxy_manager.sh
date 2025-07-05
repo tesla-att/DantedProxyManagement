@@ -312,7 +312,7 @@ show_system_info() {
     fi
     print_info_line "Auto-start Status" "$auto_start_status" "$autostart_color"
 
-    print_info_line "Listen Address" "$listen_address"":""$SELECTED_PORT" "${GREEN}"
+    print_info_line "Listen Address" "$listen_address"":""$listen_port"     "${GREEN}"
     print_info_line "Active Connections" "$active_connections" "${GREEN}"
 
     # Footer
