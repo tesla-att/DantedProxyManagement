@@ -810,7 +810,7 @@ show_users() {
         # Header with user count
         local header_title="Users List (${#users[@]} users)"
         local header_length=${#header_title}
-        local header_padding=$((78 - header_length))  # 78 - 6 (for "─ " and " ") = 69
+        local header_padding=$((77 - header_length))  # 78 - 6 (for "─ " and " ") = 69
 
         printf "${CYAN}┌ %s" "$header_title"
         for ((i=0; i<$header_padding; i++)); do printf "─"; done
@@ -1354,6 +1354,7 @@ delete_users() {
 
 # Function to test proxies
 test_proxies() {
+    clear
     print_header
     print_section_header "Test Proxies"
     
@@ -1497,7 +1498,7 @@ test_proxies() {
         
         # Total content: " " + progress + " " + proxy + " " + result + " "
         local total_content_len=$((1 + progress_len + 1 + proxy_len + 1 + result_len + 1))
-        local padding=$((70 - total_content_len))
+        local padding=$((78 - total_content_len))
         
         # Print the formatted line
         printf "${CYAN}${NC} %s %-30s %b%*s${CYAN}${NC}\n" \
