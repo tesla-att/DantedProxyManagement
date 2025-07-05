@@ -107,7 +107,7 @@ After starting, you'll see the main menu with 8 options:
 
 ```
 ┌─ Menu Options ───────────────────────────────────────────────────────────────┐
-│ 1. Install Danted SOCKS5 Proxy                                              │
+│ 1. Install Danted SOCKS5 Proxy                                               │
 │ 2. Show Users                                                                │
 │ 3. Add Users                                                                 │
 │ 4. Delete Users                                                              │
@@ -217,16 +217,16 @@ IP:PORT:USERNAME:PASSWORD
 **Example output**:
 ```
 ┌─ Proxy Test Results ─────────────────────────────────────────────────────────┐
-│ [ 1/ 3] 100.150.200.250:30500@user1    ✓ SUCCESS                           │
-│ [ 2/ 3] 192.168.1.100:1080@alice       ✗ FAILED                            │
-│ [ 3/ 3] 10.0.0.1:8080@bob              ✓ SUCCESS                           │
+│ [ 1/ 3] 100.150.200.250:30500@user1    ✓ SUCCESS                             │
+│ [ 2/ 3] 192.168.1.100:1080@alice       ✗ FAILED                              │
+│ [ 3/ 3] 10.0.0.1:8080@bob              ✓ SUCCESS                             │
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌─ Test Summary ───────────────────────────────────────────────────────────────┐
-│ Total Proxies:   3                                                          │
-│ Successful:      2                                                          │
-│ Failed:          1                                                          │
-│ Success Rate:    66%                                                        │
+│ Total Proxies:   3                                                           │
+│ Successful:      2                                                           │
+│ Failed:          1                                                           │
+│ Success Rate:    66%                                                         │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
