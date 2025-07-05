@@ -73,11 +73,6 @@ print_info_box() {
     echo
 }
 
-# Hàm loại bỏ escape code màu để tính độ dài thực
-strip_color() {
-    echo -e "$1" | sed 's/\x1B\[[0-9;]*[JKmsu]//g'
-}
-
 # Function to print success message
 print_success() {
     local message=$1
@@ -254,7 +249,48 @@ get_system_info() {
 check_service_status() {
     print_header
     print_section_header "Service Status & System Monitoring"
+       
+    # System information
+    get_system_info
+    echo
     
+    # Recent logs - Fixed width with rounded corners
+    echo -e "${CYAN}┌─ Recent Service Logs ────────────────────────────────────────────────────────┐${NC}"
+    
+    # Log header
+    local log_header="Last 5 logs from the last hour:"
+    local log_header_length=$((${#log_header} + 1))
+    local log_header_padding=$((78 - log_header_length))
+    printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$log_header" $log_header_padding ""
+    
+    # Display logs
+    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
+        if journalctl -u $DANTED_SERVICE --no-pager -n 5 --since "1 hour ago" 2>/dev/null | grep -q "."; then
+            journalctl -u $DANTED_SERVICE --no-pager -n 5 --since "1 hour ago" 2>/dev/null | while read -r line; do
+                # Truncate long log lines to fit in box
+                if [[ ${#line} -gt 73 ]]; then
+                    line="${line:0:70}..."
+                fi
+                local line_length=$((${#line} + 1))
+                local line_padding=$((78 - line_length))
+                printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$line" $line_padding ""
+            done
+        else
+            local no_logs="No recent logs found"
+            local no_logs_length=$((${#no_logs} + 1))
+            local no_logs_padding=$((78 - no_logs_length))
+            printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$no_logs" $no_logs_padding ""
+        fi
+    else
+        local log_warning="Danted service is not running. No logs available."
+        local log_warning_length=$((${#log_warning} + 1))
+        local log_warning_padding=$((78 - log_warning_length))
+        printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$log_warning" $log_warning_padding ""
+    fi
+    
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo
+
     # Service status - Fixed width box with rounded corners
     echo -e "${CYAN}┌─ Danted Service Status ──────────────────────────────────────────────────────┐${NC}"
     
@@ -279,22 +315,23 @@ check_service_status() {
         local status_icon="●"
     fi
     
-    # Service
-    local label_service="Service:"
-    local value_service="${color}${service_display}${NC}"
-    local value_service_stripped=$(strip_color "$service_display")
-    local value_service_len=${#value_service_stripped}
-    local padding_service=$((box_width - label_width - value_service_len))
-    printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_service" "$value_service" $padding_service ""
-
+    # Service status line
+    local service_display="${status_icon} ${status}"
+    local service_content_length=$((14 + ${#service_display}))  # " Service:      " + display
+    local service_padding=$((78 - service_content_length))
+    printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
     
     # Auto-start status
-    local label_autostart="Auto-start:"
-    local value_autostart="${autostart_color}${autostart_display}${NC}"
-    local value_autostart_stripped=$(strip_color "$autostart_display")
-    local value_autostart_len=${#value_autostart_stripped}
-    local padding_autostart=$((box_width - label_width - value_autostart_len))
-    printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_autostart" "$value_autostart" $padding_autostart ""
+    if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
+        local autostart_display="● ENABLED"
+        local autostart_color=$GREEN
+    else
+        local autostart_display="● DISABLED"
+        local autostart_color=$RED
+    fi
+    local autostart_content_length=$((14 + ${#autostart_display}))  # " Auto-start:   " + display
+    local autostart_padding=$((78 - autostart_content_length))
+    printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
     
     # Listen address
     if [[ -f "$DANTED_CONFIG" ]]; then
@@ -309,12 +346,10 @@ check_service_status() {
     else
         local listen_address="Not configured"
     fi
-    local label_listen="Listen on:"
-    local value_listen="${listen_color}${listen_address}${NC}"
-    local value_listen_stripped=$(strip_color "$listen_address")
-    local value_listen_len=${#value_listen_stripped}
-    local padding_listen=$((box_width - label_width - value_listen_len))
-    printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_listen" "$value_listen" $padding_listen ""
+    local listen_content_length=$((14 + ${#listen_address}))  # " Listen on:    " + display
+    local listen_padding=$((77 - listen_content_length))
+    local listen_color=$([[ "$listen_address" == "Not configured" ]] && echo "$GRAY" || echo "$YELLOW")
+    printf "${CYAN}│${NC} Listen on:    ${listen_color}%s${NC}%*s${CYAN}│${NC}\n" "$listen_address" $listen_padding ""
     
     # Active connections
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null && [[ -f "$DANTED_CONFIG" ]]; then
@@ -326,57 +361,13 @@ check_service_status() {
         local conn_display="N/A"
         local conn_color=$GRAY
     fi
-    local label_conn="Connections:"
-    local value_conn="${conn_color}${conn_display}${NC}"
-    local value_conn_stripped=$(strip_color "$conn_display")
-    local value_conn_len=${#value_conn_stripped}
-    local padding_conn=$((box_width - label_width - value_conn_len))
-    printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_conn" "$value_conn" $padding_conn ""
+    local conn_content_length=$((14 + ${#conn_display}))  # " Connections:  " + display
+    local conn_padding=$((77 - conn_content_length))
+    printf "${CYAN}│${NC} Connections:  ${conn_color}%s${NC}%*s${CYAN}│${NC}\n" "$conn_display" $conn_padding ""
     
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
-    
-    # System information
-    get_system_info
-    echo
-    
-    # Recent logs - Fixed width with rounded corners
-    echo -e "${CYAN}┌─ Recent Service Logs ────────────────────────────────────────────────────────┐${NC}"
-    
-    # Log header
-    local log_header="Last 3 logs from the last hour:"
-    local log_header_length=$((${#log_header} + 1))
-    local log_header_padding=$((78 - log_header_length))
-    printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$log_header" $log_header_padding ""
-    
-    # Display logs
-    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        if journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | grep -q "."; then
-            journalctl -u $DANTED_SERVICE --no-pager -n 3 --since "1 hour ago" 2>/dev/null | while read -r line; do
-                # Truncate long log lines to fit in box
-                if [[ ${#line} -gt 73 ]]; then
-                    line="${line:0:70}..."
-                fi
-                local line_length=$((${#line} + 1))
-                local line_padding=$((78 - line_length))
-                printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$line" $line_padding ""
-            done
-        else
-            local no_logs="No recent logs found"
-            local no_logs_length=$((${#no_logs} + 1))
-            local no_logs_padding=$((78 - no_logs_length))
-            printf "${CYAN}│${NC} ${GRAY}%s${NC}%*s${CYAN}│${NC}\n" "$no_logs" $no_logs_padding ""
-        fi
-    else
-        local log_warning="Danted service is not running. No logs available."
-        local log_warning_length=$((${#log_warning} + 1))
-        local log_warning_padding=$((78 - log_warning_length))
-        printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$log_warning" $log_warning_padding ""
-    fi
-    
-    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
-    echo
-    
+
     # Control options with box formatting
     echo -e "${YELLOW}┌─ Control Options ────────────────────────────────────────────────────────────┐${NC}"
 
@@ -877,55 +868,55 @@ EOF
 }
 
 # Function to add single user
-add_single_user() {
-    print_header
-    print_section_header "Add Single User"
+#add_single_user() {
+#    print_header
+#    print_section_header "Add Single User"
     
-    while true; do
-        read -p "$(echo -e "${YELLOW}❯${NC} Enter username: ")" username
-        if [[ -n "$username" && "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-            if id "$username" &>/dev/null; then
-                print_error "User '$username' already exists!"
-            else
-                break
-            fi
-        else
-            print_error "Invalid username. Use only letters, numbers, underscore and dash."
-        fi
-    done
+#    while true; do
+#        read -p "$(echo -e "${YELLOW}❯${NC} Enter username: ")" username
+#        if [[ -n "$username" && "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+#            if id "$username" &>/dev/null; then
+#                print_error "User '$username' already exists!"
+#            else
+#                break
+#            fi
+#        else
+#            print_error "Invalid username. Use only letters, numbers, underscore and dash."
+#        fi
+#    done
     
-    while true; do
-        read -s -p "$(echo -e "${YELLOW}❯${NC} Enter password: ")" password
-        echo
-        if [[ ${#password} -ge 4 ]]; then
-            read -s -p "$(echo -e "${YELLOW}❯${NC} Confirm password: ")" password2
-            echo
-            if [[ "$password" == "$password2" ]]; then
-                break
-            else
-                print_error "Passwords don't match!"
-            fi
-        else
-            print_error "Password must be at least 4 characters long!"
-        fi
-    done
+#    while true; do
+#        read -s -p "$(echo -e "${YELLOW}❯${NC} Enter password: ")" password
+#        echo
+#        if [[ ${#password} -ge 4 ]]; then
+#            read -s -p "$(echo -e "${YELLOW}❯${NC} Confirm password: ")" password2
+#            echo
+#            if [[ "$password" == "$password2" ]]; then
+#                break
+#            else
+#                print_error "Passwords don't match!"
+#            fi
+#        else
+#            print_error "Password must be at least 4 characters long!"
+#        fi
+#    done
     
-    echo
-    print_color $YELLOW "Creating user..."
+#    echo
+#    print_color $YELLOW "Creating user..."
     
     # Create user
-    if useradd -r -s /bin/false "$username"; then
-        echo "$username:$password" | chpasswd
-        create_user_config "$username" "$password"
-        print_success "User '$username' created successfully!"
-        print_success "Config file created: $CONFIG_DIR/$username"
-    else
-        print_error "Failed to create user '$username'!"
-    fi
+#    if useradd -r -s /bin/false "$username"; then
+#        echo "$username:$password" | chpasswd
+#        create_user_config "$username" "$password"
+#        print_success "User '$username' created successfully!"
+#        print_success "Config file created: $CONFIG_DIR/$username"
+#    else
+#        print_error "Failed to create user '$username'!"
+#    fi
     
-    echo
-    read -p "Press Enter to continue..."
-}
+#    echo
+#    read -p "Press Enter to continue..."
+#}
 
 # Function to add multiple users
 add_multi_users() {
@@ -1022,38 +1013,38 @@ add_multi_users() {
 }
 
 # Function to manage user addition
-manage_add_users() {
-    while true; do
-        print_header
-        print_section_header "Add Users Menu"
-        
-    echo -e "${CYAN}┌─ Add Users Options ──────────────────────────────────────────────────────────┐${NC}"
+#manage_add_users() {
+#    while true; do
+#        print_header
+#        print_section_header "Add Users Menu"
 
-    local add_user_items=(
-        "1. Add single user"
-        "2. Add multiple users"
-        "3. Back to main menu"
-    )
+#    echo -e "${CYAN}┌─ Add Users Options ──────────────────────────────────────────────────────────┐${NC}"
 
-    for item in "${add_user_items[@]}"; do
-        local item_length=$((${#item} + 1))  # +1 for leading space
-        local item_padding=$((78 - item_length))
-        printf "${CYAN}│${NC} ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
-    done
+#    local add_user_items=(
+#        "1. Add single user"
+#        "2. Add multiple users"
+#        "3. Back to main menu"
+#    )
 
-    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
-    echo
+#    for item in "${add_user_items[@]}"; do
+#        local item_length=$((${#item} + 1))  # +1 for leading space
+#        local item_padding=$((78 - item_length))
+#        printf "${CYAN}│${NC} ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
+#    done
+
+#    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+#    echo
+
+#        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-3]: ")" choice
         
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-3]: ")" choice
-        
-        case $choice in
-            1) add_single_user ;;
-            2) add_multi_users ;;
-            3) break ;;
-            *) print_error "Invalid option!" ;;
-        esac
-    done
-}
+#        case $choice in
+#            1) add_single_user ;;
+#            2) add_multi_users ;;
+#            3) break ;;
+#            *) print_error "Invalid option!" ;;
+#        esac
+#    done
+#}
 
 # Function to delete users
 delete_users() {
@@ -1435,7 +1426,7 @@ show_main_menu() {
     print_section_header "Main Menu"
     
     # Menu box with rounded corners
-    echo -e "${CYAN}┌─ Menu Options ───────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${YELLOW}┌─ Menu Options ───────────────────────────────────────────────────────────────┐${NC}"
     
     # Menu items with proper padding
     local menu_items=(
@@ -1455,7 +1446,7 @@ show_main_menu() {
         printf "${CYAN}│${NC} ${CYAN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
     done
     
-    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo -e "${YELLOW}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
 
@@ -1485,7 +1476,7 @@ main() {
         case $choice in
             1) install_danted ;;
             2) show_users ;;
-            3) manage_add_users ;;
+            3) add_multi_users ;;
             4) delete_users ;;
             5) test_proxies ;;
             6) check_service_status ;;
