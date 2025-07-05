@@ -200,47 +200,110 @@ get_network_interfaces() {
 
 # Function to get system info
 get_system_info() {
-    # Get system metrics
-    local cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1 2>/dev/null || echo "N/A")
-    local memory_info=$(free -h | grep "Mem:" 2>/dev/null || echo "N/A N/A N/A")
-    local memory_used=$(echo $memory_info | awk '{print $3}' 2>/dev/null || echo "N/A")
-    local memory_total=$(echo $memory_info | awk '{print $2}' 2>/dev/null || echo "N/A")
-    local disk_usage=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' 2>/dev/null || echo "N/A")
-    local uptime_info=$(uptime -p 2>/dev/null || echo "N/A")
-    
-    # Truncate long uptime for consistent display
-    if [[ ${#uptime_info} -gt 35 ]]; then
-        uptime_info="${uptime_info:0:32}..."
+    # Thêm các biến để thu thập thông tin Dante
+    dante_status="Unknown"
+    auto_start_status="Unknown"
+    listen_address="Unknown"
+    active_connections="0"
+
+    # Kiểm tra trạng thái Dante service
+    if systemctl is-active --quiet danted; then
+        dante_status="Running"
+    elif systemctl is-failed --quiet danted; then
+        dante_status="Failed"
+    else
+        dante_status="Stopped"
     fi
-    
-    # Fixed width box - 77 characters total width
+
+    # Kiểm tra auto-start status
+    if systemctl is-enabled --quiet danted 2>/dev/null; then
+        auto_start_status="Enabled"
+    else
+        auto_start_status="Disabled"
+    fi
+
+    # Lấy listen address từ config file hoặc netstat
+    if [ -f /etc/danted.conf ]; then
+        listen_address=$(grep -E "^[[:space:]]*internal:" /etc/danted.conf | head -1 | awk '{print $2}' | sed 's/port=//')
+        if [ -z "$listen_address" ]; then
+            listen_address="Not configured"
+        fi
+    else
+        # Fallback: kiểm tra từ netstat
+        listen_address=$(netstat -tlnp 2>/dev/null | grep danted | head -1 | awk '{print $4}' | cut -d: -f2)
+        if [ -z "$listen_address" ]; then
+            listen_address="Not found"
+        else
+            listen_address="0.0.0.0:$listen_address"
+        fi
+    fi
+
+    # Đếm số kết nối active
+    if command -v ss >/dev/null 2>&1; then
+        active_connections=$(ss -tn | grep -c ":1080\|:8080\|:3128" 2>/dev/null || echo "0")
+    elif command -v netstat >/dev/null 2>&1; then
+        active_connections=$(netstat -tn 2>/dev/null | grep -c ":1080\|:8080\|:3128" || echo "0")
+    fi
+
     echo -e "${CYAN}┌─ System Information ─────────────────────────────────────────────────────────┐${NC}"
 
     # CPU Usage - fixed width formatting
     local cpu_display="${cpu_usage}%"
-    local cpu_content_length=$((14 + ${#cpu_display}))  # " CPU Usage:    " + display
+    local cpu_content_length=$((14 + ${#cpu_display})) # " CPU Usage: " + display
     local cpu_padding=$((77 - cpu_content_length))
-    printf "${CYAN}│${NC} CPU Usage:    ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$cpu_display" $cpu_padding ""
-    
-    # Memory - fixed width formatting  
+    printf "${CYAN}│${NC} CPU Usage: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$cpu_display" $cpu_padding ""
+
+    # Memory - fixed width formatting
     local memory_display="${memory_used} / ${memory_total}"
     if [[ ${#memory_display} -gt 25 ]]; then
         memory_display="${memory_used}/${memory_total}"
     fi
-    local memory_content_length=$((14 + ${#memory_display}))  # " Memory:       " + display
+    local memory_content_length=$((14 + ${#memory_display})) # " Memory: " + display
     local memory_padding=$((77 - memory_content_length))
-    printf "${CYAN}│${NC} Memory:       ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$memory_display" $memory_padding ""
-    
+    printf "${CYAN}│${NC} Memory: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$memory_display" $memory_padding ""
+
     # Disk Usage - fixed width formatting
-    local disk_content_length=$((14 + ${#disk_usage}))  # " Disk Usage:   " + display
+    local disk_content_length=$((14 + ${#disk_usage})) # " Disk Usage: " + display
     local disk_padding=$((77 - disk_content_length))
-    printf "${CYAN}│${NC} Disk Usage:   ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$disk_usage" $disk_padding ""
+    printf "${CYAN}│${NC} Disk Usage: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$disk_usage" $disk_padding ""
 
     # Uptime - fixed width formatting
-    local uptime_content_length=$((14 + ${#uptime_info}))  # " Uptime:       " + display
+    local uptime_content_length=$((14 + ${#uptime_info})) # " Uptime: " + display
     local uptime_padding=$((77 - uptime_content_length))
-    printf "${CYAN}│${NC} Uptime:       ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$uptime_info" $uptime_padding ""
-    
+    printf "${CYAN}│${NC} Uptime: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$uptime_info" $uptime_padding ""
+
+    # Thêm separator line
+    echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${NC}"
+
+    # Dante Status - fixed width formatting
+    local dante_color="${GREEN}"
+    if [ "$dante_status" != "Running" ]; then
+        dante_color="${RED}"
+    fi
+    local dante_content_length=$((16 + ${#dante_status})) # " Dante Status: " + display
+    local dante_padding=$((77 - dante_content_length))
+    printf "${CYAN}│${NC} Dante Status: ${dante_color}%s${NC}%*s${CYAN}│${NC}\n" "$dante_status" $dante_padding ""
+
+    # Auto-start Status - fixed width formatting
+    local autostart_color="${GREEN}"
+    if [ "$auto_start_status" != "Enabled" ]; then
+        autostart_color="${YELLOW}"
+    fi
+    local autostart_content_length=$((19 + ${#auto_start_status})) # " Auto-start Status: " + display
+    local autostart_padding=$((77 - autostart_content_length))
+    printf "${CYAN}│${NC} Auto-start Status: ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$auto_start_status" $autostart_padding ""
+
+    # Listen Address - fixed width formatting
+    local listen_content_length=$((17 + ${#listen_address})) # " Listen Address: " + display
+    local listen_padding=$((77 - listen_content_length))
+    printf "${CYAN}│${NC} Listen Address: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$listen_address" $listen_padding ""
+
+    # Active Connections - fixed width formatting
+    local connections_display="${active_connections}"
+    local connections_content_length=$((21 + ${#connections_display})) # " Active Connections: " + display
+    local connections_padding=$((77 - connections_content_length))
+    printf "${CYAN}│${NC} Active Connections: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$connections_display" $connections_padding ""
+
     # Footer with fixed width
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
 }
@@ -286,79 +349,6 @@ check_service_status() {
         local log_warning_length=$((${#log_warning} + 1))
         local log_warning_padding=$((78 - log_warning_length))
         printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$log_warning" $log_warning_padding ""
-    fi
-    
-    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
-    echo
-
-    echo -e "${CYAN}┌─ SERVICE DASHBOARD ──────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${CYAN}│${NC}                                                                              ${CYAN}│${NC}"
-    
-    # Service status with large visual indicator
-    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        local status_text="█████ RUNNING"
-        local status_content="  ${GREEN}${status_text}${NC}"
-        local status_length=$(($(echo -n "$(strip_color "$status_text")" | wc -c) + 2))  # +2 for leading spaces
-        local status_padding=$((78 - status_length))
-        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$status_content" $status_padding ""
-        
-        local uptime=$(systemctl show $DANTED_SERVICE --property=ActiveEnterTimestamp --value 2>/dev/null)
-        if [[ -n "$uptime" ]]; then
-            local uptime_formatted=$(date -d "$uptime" '+%H:%M:%S' 2>/dev/null || echo "N/A")
-            local uptime_text="Uptime: ${uptime_formatted}"
-            local uptime_content="  ${GREEN}${uptime_text}${NC}"
-            local uptime_length=$(($(echo -n "$(strip_color "$uptime_text")" | wc -c) + 2))
-            local uptime_padding=$((78 - uptime_length))
-            printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$uptime_content" $uptime_padding ""
-        fi
-    else
-        local status_text="█████ STOPPED"
-        local status_content="  ${RED}${status_text}${NC}"
-        local status_length=$(($(echo -n "$(strip_color "$status_text")" | wc -c) + 2))
-        local status_padding=$((78 - status_length))
-        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$status_content" $status_padding ""
-        
-        local not_running_text="Service is not running"
-        local not_running_content="  ${not_running_text}"
-        local not_running_length=$(($(echo -n "$(strip_color "$not_running_text")" | wc -c) + 2))
-        local not_running_padding=$((78 - not_running_length))
-        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$not_running_content" $not_running_padding ""
-    fi
-    
-    echo -e "${CYAN}│${NC}                                                                              ${CYAN}│${NC}"
-    echo -e "${CYAN}├─ CONFIGURATION ──────────────────────────────────────────────────────────────┤${NC}"
-    
-    # Configuration details
-    if [[ -f "$DANTED_CONFIG" ]]; then
-        local config_ip=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}' 2>/dev/null || echo "N/A")
-        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null || echo "N/A")
-        
-        local config_text="Listen Address: ${config_ip} Port: ${config_port}"
-        local config_content=" ${YELLOW}${config_text}${NC}"
-        local config_length=$(($(echo -n "$(strip_color "$config_text")" | wc -c) + 1))  # +1 for leading space
-        local config_padding=$((78 - config_length))
-        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$config_content" $config_padding ""
-    else
-        local config_text="Configuration file not found"
-        local config_content=" ${RED}${config_text}${NC}"
-        local config_length=$(($(echo -n "$(strip_color "$config_text")" | wc -c) + 1))
-        local config_padding=$((78 - config_length))
-        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$config_content" $config_padding ""
-    fi
-    
-    # Auto-start status
-    if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
-        local autostart_text="Auto-start: ENABLED"
-        local autostart_content=" ${GREEN}${autostart_text}${NC}"
-        local autostart_length=$(($(echo -n "$(strip_color "$autostart_text")" | wc -c) + 1))
-        local autostart_padding=$((78 - autostart_length))
-        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$autostart_content" $autostart_padding ""
-    else
-        local autostart_text="Auto-start: DISABLED"
-        local autostart_content=" ${RED}${autostart_text}${NC}"
-        local autostart_length=$(($(echo -n "$(strip_color "$autostart_text")" | wc -c) + 1))
-        local autostart_padding=$((78 - autostart_length))
-        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$autostart_content" $autostart_padding ""
     fi
     
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
@@ -1434,7 +1424,7 @@ show_main_menu() {
         "5. Test Proxies"
         "6. Check Status & Monitoring"
         "7. Uninstall Danted"
-        "0. Exit"
+        "8. Exit"
     )
     
     for item in "${menu_items[@]}"; do
@@ -1482,14 +1472,7 @@ main() {
                 # Clear screen and show thank you message
                 clear
                 print_header
-                print_section_header "Thank You"
-                echo
-                echo -e "${GREEN}┌─ Thank You ──────────────────────────────────────────────────────────────────┐${NC}"
-                local thank_msg="Thank you for using Danted SOCKS5 Proxy Manager!"
-                local thank_length=$((${#thank_msg} + 1))
-                local thank_padding=$((78 - thank_length))
-                printf "${GREEN}│${NC} %s%*s${GREEN}│${NC}\n" "$thank_msg" $thank_padding ""
-                echo -e "${GREEN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+                print_section_header "Thank you for using Danted SOCKS5 Proxy Manager!"
                 echo
                 exit 0
                 ;;
