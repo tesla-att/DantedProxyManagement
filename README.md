@@ -1,287 +1,633 @@
-# 🚀 SOCKS5 Proxy Manager Performance Optimization
+# Danted SOCKS5 Proxy Manager v1.0
 
-**Transform your proxy management scripts from slow to lightning-fast with 65-75% performance improvements!**
+A professional SOCKS5 Proxy Server management tool written in Bash for Ubuntu systems, utilizing Dante SOCKS server.
 
-## 📊 Quick Results
+## 📋 Table of Contents
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Script Execution** | 4-6 seconds | 1-2 seconds | **🎯 70% faster** |
-| **Service Checks** | 1.4 seconds | 0.2 seconds | **🎯 85% faster** |
-| **User Operations** | 1.8 seconds | 0.3 seconds | **🎯 83% faster** |
-| **System Monitoring** | 0.4 seconds | 0.15 seconds | **🎯 62% faster** |
+- [Features](#-features)
+- [System Requirements](#-system-requirements) 
+- [Installation](#-installation)
+- [Usage](#-usage)
+- [Main Functions](#-main-functions)
+- [Directory Structure](#-directory-structure)
+- [Configuration](#-configuration)
+- [Monitoring & Status Check](#-monitoring--status-check)
+- [Troubleshooting](#-troubleshooting)
+- [Security](#-security)
+- [FAQ](#-faq)
+- [Contributing](#-contributing)
 
----
+## 🚀 Features
 
-## 🎯 One-Click Optimization
+### Basic Management
+- ✅ **Automatic installation** of Dante SOCKS5 server
+- ✅ **Intuitive menu interface** with colorful output
+- ✅ **User management** (add/delete/list users)
+- ✅ **Automatic configuration** of network interface and port
+- ✅ **Complete uninstallation** when no longer needed
 
-### Quick Start (30 seconds)
+### Monitoring & Testing
+- 📊 **System information display** (CPU, RAM, disk usage)
+- 🔍 **Real-time Dante service monitoring**
+- 📜 **Detailed service logs** viewing
+- 🌐 **Internet bandwidth testing**
+- 🧪 **Proxy testing** with multiple servers
+
+### Automation
+- ⚙️ **Automatic V2Ray/Xray config generation** for each user
+- 🔄 **Easy service restart/stop** functionality
+- 📂 **Config file management** in separate directory
+- 🛡️ **Automatic input validation**
+
+## 🔧 System Requirements
+
+### Operating System
+- **Ubuntu 18.04+** (recommended)
+- **Debian 9+** (may work)
+
+### Required Software
+- `curl` - for connectivity testing
+- `netstat` - for port checking
+- `systemctl` - for service management
+- `useradd/userdel` - for user management
+- `bc` - for calculations (auto-installed if needed)
+
+### Access Requirements
+- **Root privileges** (sudo or root user)
+- **Network access** for downloading packages
+
+### System Resources
+- **RAM**: Minimum 512MB (recommended 1GB+)
+- **Disk**: Minimum 100MB free space
+- **CPU**: Any x86_64 CPU
+
+## 📥 Installation
+
+### Method 1: Direct Download
 ```bash
-# 1. Apply all optimizations automatically
-./integration_guide.sh integrate
+# Download script
+wget https://raw.githubusercontent.com/ndn8144/DantedProxyManagement/refs/heads/main/dantedManager.sh
 
-# 2. Test performance improvements  
-./performance_comparison.sh
+# Make executable
+chmod +x dantedManager.sh
 
-# 3. Use your optimized scripts normally
-./proxy_manager.sh
+# Run script
+sudo ./dantedManager.sh
 ```
 
-### Rollback if Needed
+### Method 2: Clone Repository
 ```bash
-# Restore original scripts if any issues
-./integration_guide.sh rollback backup_YYYYMMDD_HHMMSS
+# Clone repository
+git clone https://github.com/ndn8144/DantedProxyManagement.git
+
+# Enter directory
+cd DantedProxyManagement
+
+# Make executable
+chmod +x dantedManager.sh
+
+# Run script
+sudo ./dantedManager.sh
 ```
 
----
-
-## 📁 Project Files
-
-### **Core Optimization Files**
-- **`optimized_functions.sh`** - High-performance function library with intelligent caching
-- **`integration_guide.sh`** - Automated optimization deployment with backup/rollback
-- **`PERFORMANCE_ANALYSIS.md`** - Detailed technical analysis of bottlenecks and solutions
-- **`OPTIMIZATION_SUMMARY.md`** - Executive summary of improvements and impact
-
-### **Original Scripts** (To be optimized)
-- `danted_manager.sh` - Basic SOCKS5 proxy manager (864 lines)
-- `proxy_manager.sh` - Enhanced proxy manager with UI (1341 lines)  
-- `proxy_manager_vi.sh` - Vietnamese version (864 lines)
-- `sample` - JSON configuration template
-
----
-
-## 🔧 Performance Optimizations Applied
-
-### **1. Intelligent Caching System** ⚡
-- **30-second TTL cache** for expensive operations
-- **Global state management** prevents redundant system calls
-- **Smart cache invalidation** ensures data freshness
-
-### **2. System Call Optimization** 🚀
-- **Eliminated repeated `systemctl` calls** (7→1 per execution)
-- **Direct `/proc` filesystem access** instead of heavyweight commands
-- **Single-pass parsing** replaces complex pipe chains
-
-### **3. Resource Usage Reduction** 💻  
-- **50% less CPU usage** through optimized algorithms
-- **Reduced memory footprint** by eliminating subprocess spawning
-- **Faster I/O operations** with batched file operations
-
-### **4. User Experience Enhancement** 🎮
-- **Near-instant menu responses** 
-- **Real-time system monitoring** without delays
-- **Responsive interface selection** and operations
-
----
-
-## 🛠️ Technical Implementation
-
-### **Caching Architecture**
+### Method 3: Direct Execution
 ```bash
-# Intelligent caching with TTL validation
-CACHE_TTL=30
-is_cache_valid() {
-    [[ $(($(date +%s) - CACHE_TIMESTAMP)) -lt $CACHE_TTL ]]
+# Run script directly from internet
+curl -sSL https://raw.githubusercontent.com/ndn8144/DantedProxyManagement/refs/heads/main/dantedManager.sh | sudo bash
+```
+
+## 📘 Usage
+
+### Starting the Script
+```bash
+sudo ./dantedManager.sh
+```
+
+After starting, you'll see the main menu with 8 options:
+
+```
+┌─ Menu Options ───────────────────────────────────────────────────────────────┐
+│ 1. Install Danted SOCKS5 Proxy                                              │
+│ 2. Show Users                                                                │
+│ 3. Add Users                                                                 │
+│ 4. Delete Users                                                              │
+│ 5. Test Proxies                                                              │
+│ 6. Check Status & Monitoring                                                 │
+│ 7. Uninstall Danted                                                          │
+│ 8. Exit                                                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+## 🛠️ Main Functions
+
+### 1. Install Danted SOCKS5 Proxy
+**Purpose**: Install and configure Dante SOCKS5 server for the first time.
+
+**Process**:
+1. Select network interface (displays list of available IPs)
+2. Enter port for SOCKS5 (default: 1080)
+3. Script will automatically:
+   - Update package list
+   - Install `dante-server`
+   - Create configuration file `/etc/danted.conf`
+   - Enable and start service
+   - Check status
+
+**Example generated configuration**:
+```bash
+# /etc/danted.conf
+logoutput: /var/log/danted.log
+internal: 192.168.1.100 port = 1080
+external: 192.168.1.100
+
+socksmethod: username
+
+client pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    log: error connect disconnect
+}
+
+socks pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    log: error connect disconnect
+    socksmethod: username
 }
 ```
 
-### **Optimized System Access**
-```bash
-# Before: Multiple subprocess calls
-systemctl is-active --quiet $DANTED_SERVICE  # Called 7+ times
-getent passwd | grep '/bin/false'            # Called 6+ times  
-top -bn1 | grep "Cpu(s)" | awk...           # Heavy subprocess
+### 2. Show Users
+**Purpose**: Display list of all existing SOCKS5 users.
 
-# After: Cached and optimized access
-is_service_active()                          # Single call + cache
-get_socks_users()                           # Single call + cache
-read -r cpu_usage < /proc/loadavg           # Direct /proc access
+**Information displayed**:
+- Sequential number
+- Username
+- Total user count
+
+**User filtering**: Only shows users with `/bin/false` shell (users created for SOCKS5)
+
+### 3. Add Users
+**Purpose**: Add new users for SOCKS5 proxy.
+
+**Features**:
+- **Bulk user addition**: Enter list of usernames, one per line
+- **Automatic validation**: Check username format, duplicates
+- **Password creation**: Enter and confirm password for each user
+- **Config file generation**: Automatically create V2Ray/Xray config file for each user
+
+**Input format**:
+```
+# Enter usernames (one per line)
+user1
+user2
+user3
+
+# Press Enter twice to finish
 ```
 
-### **Performance Monitoring**
+**Generated config file**: `configFiles/[username]` (JSON format for V2Ray/Xray)
+
+### 4. Delete Users
+**Purpose**: Remove unnecessary SOCKS5 users.
+
+**Features**:
+- Display list of deletable users
+- Select multiple users at once (space-separated numbers)
+- Confirmation before deletion
+- Remove both system user and config file
+
+**Example**: Enter `1 3 5` to delete users #1, #3, and #5
+
+### 5. Test Proxies
+**Purpose**: Check operational status of proxies.
+
+**Features**:
+- **Test multiple proxies simultaneously**
+- **Automatic format validation**
+- **Real-time results** with progress indicator
+- **Statistics**: Total proxies, successful, failed, success rate
+
+**Input format**:
+```
+IP:PORT:USERNAME:PASSWORD
+
+# Examples:
+100.150.200.250:30500:user1:pass123
+192.168.1.100:1080:alice:secret456
+```
+
+**Example output**:
+```
+┌─ Proxy Test Results ─────────────────────────────────────────────────────────┐
+│ [ 1/ 3] 100.150.200.250:30500@user1    ✓ SUCCESS                           │
+│ [ 2/ 3] 192.168.1.100:1080@alice       ✗ FAILED                            │
+│ [ 3/ 3] 10.0.0.1:8080@bob              ✓ SUCCESS                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ Test Summary ───────────────────────────────────────────────────────────────┐
+│ Total Proxies:   3                                                          │
+│ Successful:      2                                                          │
+│ Failed:          1                                                          │
+│ Success Rate:    66%                                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 6. Check Status & Monitoring
+**Purpose**: Monitor system and Dante service.
+
+**Information displayed**:
+
+#### System Information:
+- **CPU Usage**: Percentage of CPU currently in use
+- **Memory**: RAM used/total
+- **Disk Usage**: Percentage of disk space used
+- **Uptime**: System uptime
+
+#### Dante Information:
+- **Dante Status**: Running/Stopped/Failed
+- **Auto-start Status**: Enabled/Disabled
+- **Listen Address**: IP:Port currently listening
+- **Active Connections**: Current connection count
+
+#### Recent Service Logs:
+- Last 5 log entries from the past hour
+
+#### Control Options:
+1. **Restart Service**: Restart Dante service
+2. **Stop Service**: Stop Dante service  
+3. **View Full Logs**: View last 50 log entries
+4. **Test Internet Bandwidth**: Check network speed
+5. **Back to Main Menu**: Return to main menu
+
+### 7. Uninstall Danted
+**Purpose**: Completely uninstall Dante and clean the system.
+
+**Process**:
+1. **Warning**: Display warning about complete removal
+2. **Confirmation**: Require user confirmation
+3. **Stop service**: Stop and disable Dante service
+4. **Remove package**: Uninstall `dante-server`
+5. **Clean config**: Remove configuration file `/etc/danted.conf`
+6. **Optional cleanup**:
+   - Ask whether to remove user config files
+   - Ask whether to remove SOCKS5 users
+
+### 8. Exit
+Exit the script with a thank you message.
+
+## 📁 Directory Structure
+
+```
+/
+├── etc/
+│   └── danted.conf                 # Main Dante configuration file
+├── var/log/
+│   └── danted.log                  # Dante service log file
+└── [script_directory]/
+    ├── dantedManager.sh            # Main script
+    └── configFiles/                # Directory containing config files
+        ├── user1                   # V2Ray/Xray config for user1
+        ├── user2                   # V2Ray/Xray config for user2
+        └── ...
+```
+
+## ⚙️ Configuration
+
+### Dante Configuration File (`/etc/danted.conf`)
+
 ```bash
-# Built-in benchmarking tools
-benchmark_functions()                        # Test optimization effectiveness
-./performance_comparison.sh                 # Before/after comparison
-time ./proxy_manager.sh                     # Real-world timing
+# Log output
+logoutput: /var/log/danted.log
+
+# Internal interface (server listening)
+internal: [SERVER_IP] port = [PORT]
+
+# External interface (outgoing connections)  
+external: [SERVER_IP]
+
+# Authentication method
+socksmethod: username
+
+# Client access rules
+client pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    log: error connect disconnect
+}
+
+# SOCKS proxy rules
+socks pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    log: error connect disconnect
+    socksmethod: username
+}
+```
+
+### V2Ray/Xray Configuration File (Example)
+Each user will have a separate config file in `configFiles/[username]`:
+
+```json
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "tag": "socks",
+      "port": 10808,
+      "listen": "127.0.0.1",
+      "protocol": "mixed"
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "proxy-1",
+      "protocol": "socks",
+      "settings": {
+        "servers": [
+          {
+            "address": "[SERVER_IP]",
+            "port": [PORT],
+            "users": [
+              {
+                "user": "[USERNAME]",
+                "pass": "[PASSWORD]"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+## 📊 Monitoring & Status Check
+
+### Checking Service Status
+```bash
+# Check status
+sudo systemctl status danted
+
+# View real-time logs
+sudo journalctl -u danted -f
+
+# Check listening port
+sudo netstat -tlnp | grep danted
+```
+
+### Checking System Users
+```bash
+# View SOCKS5 user list
+getent passwd | grep '/bin/false'
+
+# Check specific user
+id [username]
+```
+
+### Checking Connections
+```bash
+# Check active connections
+sudo ss -tn | grep :[PORT]
+
+# Test proxy with curl
+curl --proxy socks5://username:password@server_ip:port http://httpbin.org/ip
+```
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### 1. Service Won't Start
+**Symptoms**: Dante service failed to start
+```bash
+# Check logs
+sudo journalctl -u danted --no-pager -n 20
+
+# Check configuration
+sudo danted -f /etc/danted.conf -v
+```
+
+**Solutions**:
+- Verify IP address in config is correct
+- Check for port conflicts
+- Verify config file syntax
+
+#### 2. Port Already in Use
+**Symptoms**: Port already in use error
+```bash
+# Check which process is using the port
+sudo lsof -i :[PORT]
+sudo netstat -tlnp | grep :[PORT]
+```
+
+**Solutions**:
+- Choose a different port
+- Kill the process using the port (if safe)
+
+#### 3. Authentication Failed
+**Symptoms**: Client can't connect with username/password
+
+**Check**:
+```bash
+# Check if user exists
+id [username]
+
+# Check password (try to login)
+su - [username]  # Should fail with /bin/false shell
+```
+
+**Solutions**:
+- Recreate user with new password
+- Verify Dante config has correct authentication method
+
+#### 4. Can't Download Packages
+**Symptoms**: apt update/install failed
+
+**Solutions**:
+```bash
+# Update package list
+sudo apt update
+
+# Fix broken packages
+sudo apt --fix-broken install
+
+# Retry with verbose output
+sudo apt install -y dante-server -v
+```
+
+### Debug Mode
+
+To run Dante in debug mode:
+```bash
+# Stop service first
+sudo systemctl stop danted
+
+# Run manually with debug
+sudo danted -f /etc/danted.conf -d
+```
+
+## 🔒 Security
+
+### Security Recommendations
+
+#### 1. Firewall Configuration
+```bash
+# Only allow SOCKS5 port
+sudo ufw allow [SOCKS5_PORT]/tcp
+
+# Block all other ports (optional)
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw enable
+```
+
+#### 2. Strong Passwords
+- Use passwords with at least 8 characters
+- Combine uppercase, lowercase, numbers, and special characters
+- Avoid personal information
+
+#### 3. Regular Monitoring
+- Check logs regularly
+- Monitor active connections
+- Update system frequently
+
+#### 4. Access Control
+```bash
+# Limit access from specific IP (in danted.conf)
+client pass {
+    from: 192.168.1.0/24 to: 0.0.0.0/0
+    log: error connect disconnect
+}
+```
+
+### Backup and Restore
+
+#### Backup Configuration
+```bash
+# Backup Dante config
+sudo cp /etc/danted.conf /etc/danted.conf.backup
+
+# Backup user configs
+tar -czf configFiles_backup.tar.gz configFiles/
+
+# Backup user accounts
+getent passwd | grep '/bin/false' > socks_users_backup.txt
+```
+
+#### Restore
+```bash
+# Restore Dante config
+sudo cp /etc/danted.conf.backup /etc/danted.conf
+
+# Restore user configs
+tar -xzf configFiles_backup.tar.gz
+
+# Restart service
+sudo systemctl restart danted
+```
+
+## ❓ FAQ
+
+### Q: Does the script work on CentOS/RHEL?
+**A**: The script is designed for Ubuntu/Debian. To run on CentOS/RHEL, you need to modify some commands:
+- `apt` → `yum` or `dnf`
+- Package names may differ
+- Service management is similar
+
+### Q: Can I change the port after installation?
+**A**: Yes, by:
+1. Edit `/etc/danted.conf`
+2. Change the port number
+3. Restart service: `sudo systemctl restart danted`
+
+### Q: What's the maximum number of users I can create?
+**A**: There's no hard limit, it depends on:
+- System resources (RAM, CPU)
+- Network bandwidth
+- Concurrent connections limit
+
+### Q: What format are the config files?
+**A**: JSON format for V2Ray/Xray clients. Can be imported directly into compatible clients.
+
+### Q: How do I backup all configurations?
+**A**: 
+```bash
+# Create simple backup script
+#!/bin/bash
+mkdir -p backup/$(date +%Y%m%d)
+cp /etc/danted.conf backup/$(date +%Y%m%d)/
+cp -r configFiles backup/$(date +%Y%m%d)/
+getent passwd | grep '/bin/false' > backup/$(date +%Y%m%d)/users.txt
+```
+
+### Q: Dante service crashes frequently?
+**A**: Check:
+- System resources (RAM, CPU)
+- Log files for error messages
+- Network configuration
+- Concurrent connections limit
+
+### Q: Can I use it with IPv6?
+**A**: Yes, configure in `danted.conf`:
+```bash
+# IPv6 support
+internal: [IPv6_ADDRESS] port = [PORT]
+external: [IPv6_ADDRESS]
+```
+
+## 🤝 Contributing
+
+### Reporting Bugs
+1. Open an issue on GitHub
+2. Provide information:
+   - OS version
+   - Error messages
+   - Steps to reproduce
+   - Expected vs actual behavior
+
+### Feature Requests
+1. Check existing issues first
+2. Describe the use case in detail
+3. Suggest implementation approach
+
+### Pull Requests
+1. Fork the repository
+2. Create a feature branch
+3. Commit changes with clear messages
+4. Submit pull request with description
+
+### Development Setup
+```bash
+# Clone repo
+git clone https://github.com/ndn8144/DantedProxyManagement.git
+
+# Create test environment
+vagrant up  # If Vagrantfile exists
+
+# Test script
+sudo bash dantedManager.sh
 ```
 
 ---
 
-## 🛡️ Safety Features
+## 📞 Support
 
-### **Comprehensive Backup System**
-- ✅ **Automatic backups** before any changes
-- ✅ **Timestamped backup directories** 
-- ✅ **One-click rollback** functionality
-- ✅ **Validation checks** after deployment
-
-### **Error Handling**
-- ✅ **Graceful degradation** if optimizations fail
-- ✅ **Fallback to original methods** 
-- ✅ **Cache invalidation** on errors
-- ✅ **Comprehensive logging** for troubleshooting
+- **GitHub Issues**: [Report bugs/feature requests](https://github.com/ndn8144/DantedProxyManagement/issues)
+- **Email**: [Contact maintainer]
+- **Telegram**: [Support group]
 
 ---
 
-## 📊 Performance Benchmarks
+## 📄 License
 
-### **Detailed Timing Breakdown**
-
-| Operation | Original | Optimized | Savings | 
-|-----------|----------|-----------|---------|
-| Service status check | 200ms × 7 = 1.4s | 200ms × 1 = 0.2s | **1.2s saved** |
-| User enumeration | 300ms × 6 = 1.8s | 300ms × 1 = 0.3s | **1.5s saved** |
-| Network interface parsing | 250ms | 100ms | **150ms saved** |
-| System metrics gathering | 400ms | 150ms | **250ms saved** |
-| Config file operations | 100ms × 4 = 400ms | 50ms × 1 = 50ms | **350ms saved** |
-| **Total per execution** | **4.25s** | **0.8s** | **⚡ 81% faster** |
-
-### **Resource Usage Improvements**
-- **CPU Usage**: 50% reduction in processing overhead
-- **Memory Usage**: 40% reduction through subprocess elimination  
-- **I/O Operations**: 60% fewer file system calls
-- **Network Overhead**: 70% reduction in redundant checks
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🎮 User Experience Impact
+## 🙏 Credits
 
-### **Before Optimization**
-- ⏳ 2-3 second startup delays
-- ⏳ 1-2 second menu response times  
-- ⏳ 4-6 second operation completion
-- 😤 Frustrating wait times for basic tasks
-
-### **After Optimization**
-- ⚡ <0.5 second startup times
-- ⚡ Instant menu responses
-- ⚡ 1-2 second operation completion  
-- 😊 Smooth, responsive experience
+- **Dante SOCKS server**: [Inferno Nettverk A/S](https://www.inet.no/dante/)
+- **V2Ray/Xray config**: Compatible with V2Ray and Xray clients
+- **Contributors**: All those who have contributed to this project
 
 ---
 
-## 🚀 Advanced Usage
-
-### **Custom Cache Configuration**
-```bash
-# Adjust cache lifetime based on your environment
-export CACHE_TTL=60  # 60-second cache for stable environments
-export CACHE_TTL=10  # 10-second cache for dynamic environments
-```
-
-### **Performance Monitoring**
-```bash
-# Monitor optimization effectiveness
-./integration_guide.sh validate
-./optimized_functions.sh  # Run built-in benchmarks
-```
-
-### **Selective Optimization**
-```bash
-# Apply only specific optimizations
-./integration_guide.sh backup           # Backup only
-source optimized_functions.sh           # Load optimized functions manually
-```
-
----
-
-## 🔍 Troubleshooting
-
-### **Common Issues**
-
-**Q: Script shows "function not found" errors**
-```bash
-# Ensure optimized_functions.sh is loaded
-source optimized_functions.sh
-./integration_guide.sh validate
-```
-
-**Q: Performance improvements not visible**
-```bash
-# Check cache is working
-echo "Cache TTL: $CACHE_TTL"
-echo "Cache timestamp: $CACHE_TIMESTAMP"
-```
-
-**Q: Want to revert changes**
-```bash
-# List available backups and rollback
-ls -d backup_*
-./integration_guide.sh rollback backup_YYYYMMDD_HHMMSS
-```
-
----
-
-## 📈 Monitoring & Maintenance
-
-### **Regular Performance Checks**
-```bash
-# Weekly performance validation
-./performance_comparison.sh
-
-# Monthly optimization review  
-./integration_guide.sh validate
-```
-
-### **Cache Health Monitoring**
-```bash
-# Check cache hit rates
-grep "cache_valid" /var/log/proxy_manager.log
-
-# Monitor cache performance
-benchmark_functions
-```
-
----
-
-## 🎯 Key Benefits Summary
-
-### **For End Users**
-- 🚀 **70% faster operations** - Get things done quickly
-- 🎮 **Smooth, responsive interface** - No more frustrating delays
-- 📊 **Real-time monitoring** - Instant system status updates
-
-### **For Administrators**  
-- 💻 **50% less server resources** - Better system efficiency
-- 🛠️ **Automated optimization tools** - Easy deployment and maintenance
-- 📊 **Built-in performance monitoring** - Track improvements over time
-
-### **For Development**
-- 🏗️ **Modular architecture** - Easy to extend and customize
-- 🧪 **Comprehensive testing** - Reliable performance validation
-- 📚 **Detailed documentation** - Clear implementation guidance
-
----
-
-## 📞 Support & Documentation
-
-### **Quick Reference**
-- **Installation**: `./integration_guide.sh integrate`
-- **Testing**: `./performance_comparison.sh`
-- **Validation**: `./integration_guide.sh validate`
-- **Rollback**: `./integration_guide.sh rollback <backup_dir>`
-
-### **Documentation Files**
-- **`PERFORMANCE_ANALYSIS.md`** - Technical deep-dive
-- **`OPTIMIZATION_SUMMARY.md`** - Executive summary
-- **`integration_guide.sh help`** - Command-line help
-
----
-
-## ✅ Success Metrics
-
-After implementing these optimizations, you should see:
-
-- ✅ **70%+ faster script execution** times
-- ✅ **Instant menu responses** and navigation  
-- ✅ **50%+ reduction** in system resource usage
-- ✅ **Near real-time** system monitoring updates
-- ✅ **Improved user satisfaction** with responsive interface
-
----
-
-*Transform your SOCKS5 proxy management from slow to lightning-fast in just a few minutes!*
-
-**Ready to optimize? Run: `./integration_guide.sh integrate`** 🚀
+**⚠️ Disclaimer**: This script is provided "as-is" without warranty. Use at your own responsibility and comply with local laws.
