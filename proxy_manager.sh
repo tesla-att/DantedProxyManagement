@@ -198,14 +198,6 @@ get_network_interfaces() {
     return 0
 }
 
-#!/bin/bash
-
-# Color definitions
-CYAN='\033[1;36m'
-GREEN='\033[1;32m'
-RED='\033[1;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
 
 # Function to display system information with Dante status
 show_system_info() {
@@ -268,7 +260,7 @@ show_system_info() {
         local value="$2"
         local color="$3"
         local content_length=$((${#label} + ${#value} + 3)) # label + ": " + value
-        local padding=$((77 - content_length))
+        local padding=$((78 - content_length))
         printf "${CYAN}│${NC} %s: ${color}%s${NC}%*s${CYAN}│${NC}\n" "$label" "$value" $padding ""
     }
 
