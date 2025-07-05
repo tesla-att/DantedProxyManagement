@@ -923,7 +923,7 @@ add_multi_users() {
     print_header
     print_section_header "Add Multiple Users"
 
-    echo -e "${GRAY}Enter data (empty line twice to finish):${NC}"
+    echo -e "${GRAY}Enter data (Enter 1 user per line, press Enter twice to finish):${NC}"
     # Read usernames using multiline input
     local usernames_input
     usernames_input=$(read_multiline_input "Enter usernames (one per line):")
@@ -1241,6 +1241,7 @@ test_proxies() {
     
     echo
     print_color $CYAN "Testing ${#proxies[@]} proxies..."
+    print_color $CYAN "Please wait..."   
     echo
     
     local success_count=0
@@ -1443,7 +1444,7 @@ show_main_menu() {
     for item in "${menu_items[@]}"; do
         local item_length=$((${#item} + 1))  # +1 for leading space
         local item_padding=$((78 - item_length))
-        printf "${CYAN}│${NC} ${CYAN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
+        printf "${YELLOW}│${NC} ${CYAN}%s${NC}%*s${YELLOW}│${NC}\n" "$item" $item_padding ""
     done
     
     echo -e "${YELLOW}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
