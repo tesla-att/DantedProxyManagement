@@ -232,7 +232,15 @@ show_system_info() {
 
     # Get listen address from config file or netstat
     if [ -f /etc/danted.conf ]; then
-        listen_address=$(grep -E "^[[:space:]]*internal:" /etc/danted.conf | head -1 | awk '{print $2}' | sed 's/port=//')
+        internal_line=$(grep -E "^[[:space:]]*internal:" /etc/danted.conf | head -1)
+        if [ -n "$internal_line" ]; then
+            # Extract IP address and port more reliably
+            listen_address=$(echo "$internal_line" | sed -n 's/.*internal:[[:space:]]*\([^[:space:]]*\).*/\1/p' | sed 's/port=.*//')
+            listen_port=$(echo "$internal_line" | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
+            if [ -n "$listen_port" ]; then
+                listen_address="${listen_address}:${listen_port}"
+            fi
+        fi
         if [ -z "$listen_address" ]; then
             listen_address="Not configured"
         fi

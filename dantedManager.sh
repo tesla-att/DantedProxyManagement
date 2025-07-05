@@ -236,8 +236,9 @@ show_system_info() {
     if [ -f /etc/danted.conf ]; then
         internal_line=$(grep -E "^[[:space:]]*internal:" /etc/danted.conf | head -1)
         if [ -n "$internal_line" ]; then
-            listen_address=$(echo "$internal_line" | awk '{print $2}' | sed 's/port=.*//')
-            listen_port=$(echo "$internal_line" | awk '{print $2}' | sed 's/.*port=//')
+            # Extract IP address and port more reliably
+            listen_address=$(echo "$internal_line" | sed -n 's/.*internal:[[:space:]]*\([^[:space:]]*\).*/\1/p' | sed 's/port=.*//')
+            listen_port=$(echo "$internal_line" | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
             if [ -z "$listen_address" ]; then
                 listen_address="Not configured"
                 listen_port="Not configured"
@@ -468,14 +469,14 @@ change_port() {
     # Get current port
     local current_port=""
     if [ -f "$DANTED_CONFIG" ]; then
-        current_port=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | awk '{print $2}' | sed 's/.*port=//')
+        current_port=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
     fi
     
     if [ -z "$current_port" ]; then
         current_port="Not configured"
     fi
     
-    echo -e "${CYAN}┌─ Current Configuration ─────────────────────────────────────────────────────┐${NC}"
+    echo -e "${CYAN}┌─ Current Configuration ──────────────────────────────────────────────────────┐${NC}"
     printf "${CYAN}${NC} Current Port: ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$current_port" 60 ""
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
@@ -518,7 +519,7 @@ change_port() {
     # Get current IP address
     local current_ip=""
     if [ -f "$DANTED_CONFIG" ]; then
-        current_ip=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | awk '{print $2}' | sed 's/port=.*//')
+        current_ip=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | sed -n 's/.*internal:[[:space:]]*\([^[:space:]]*\).*/\1/p' | sed 's/port=.*//')
     fi
     
     if [ -z "$current_ip" ]; then
