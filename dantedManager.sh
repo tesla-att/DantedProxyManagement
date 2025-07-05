@@ -438,28 +438,245 @@ check_service_status() {
 test_bandwidth() {
     print_section_header "Internet Bandwidth Test"
     
-    print_color $YELLOW "Testing download speed..."
+    # Multiple test servers for better accuracy
+    local test_servers=(
+        "http://speedtest.ftp.otenet.gr/files/test1Mb.db"
+        "http://speedtest.ftp.otenet.gr/files/test10Mb.db"
+        "http://ipv4.download.thinkbroadband.com/10MB.zip"
+        "http://speedtest.tele2.net/1MB.zip"
+    )
     
-    # Test with curl
-    local test_file="http://speedtest.ftp.otenet.gr/files/test1Mb.db"
-    local start_time=$(date +%s.%N)
+    # Function to format speed
+    format_speed() {
+        local speed=$1
+        if (( $(echo "$speed >= 1000" | bc -l 2>/dev/null || echo "0") )); then
+            echo "$(echo "scale=2; $speed / 1000" | bc -l 2>/dev/null || echo "0") Gbps"
+        else
+            echo "$(echo "scale=2; $speed" | bc -l 2>/dev/null || echo "0") Mbps"
+        fi
+    }
     
-    if curl -s -w "%{speed_download}" -o /dev/null "$test_file" 2>/dev/null | grep -q "[0-9]"; then
-        local end_time=$(date +%s.%N)
-        local duration=$(echo "$end_time - $start_time" | bc 2>/dev/null || echo "1")
-        local speed=$(curl -s -w "%{speed_download}" -o /dev/null "$test_file" 2>/dev/null)
-        local speed_mbps=$(echo "scale=2; $speed / 1024 / 1024 * 8" | bc 2>/dev/null || echo "0")
+    # Function to test single server
+    test_single_server() {
+        local server_url=$1
+        local server_name=$(echo "$server_url" | sed 's|.*//||' | sed 's|/.*||')
         
-        print_success "Download speed: ${speed_mbps} Mbps"
-        print_info_box "Test completed in ${duration}s"
-
-    else
-        print_error "Bandwidth test failed!"
+        print_color $CYAN "Testing with: $server_name"
+        
+        # Test download speed
+        local speed_result=$(curl -s -w "%{speed_download}" -o /dev/null --connect-timeout 10 --max-time 30 "$server_url" 2>/dev/null)
+        
+        if [[ "$speed_result" =~ ^[0-9]+\.?[0-9]*$ ]] && (( $(echo "$speed_result > 0" | bc -l 2>/dev/null || echo "0") )); then
+            local speed_mbps=$(echo "scale=2; $speed_result / 1024 / 1024 * 8" | bc -l 2>/dev/null || echo "0")
+            print_success "Speed: $(format_speed $speed_mbps)"
+            echo "$speed_mbps"
+        else
+            print_error "Failed to test with $server_name"
+            echo "0"
+        fi
+    }
+    
+    # Test direct connection
+    print_color $YELLOW "Testing direct internet connection..."
+    echo
+    
+    local speeds=()
+    local valid_tests=0
+    
+    for server in "${test_servers[@]}"; do
+        local speed=$(test_single_server "$server")
+        if (( $(echo "$speed > 0" | bc -l 2>/dev/null || echo "0") )); then
+            speeds+=("$speed")
+            ((valid_tests++))
+        fi
+        echo
+    done
+    
+    if [[ $valid_tests -eq 0 ]]; then
+        print_error "All speed tests failed!"
         print_warning "Please check your internet connection."
+        echo
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Calculate average speed
+    local total_speed=0
+    for speed in "${speeds[@]}"; do
+        total_speed=$(echo "$total_speed + $speed" | bc -l 2>/dev/null || echo "0")
+    done
+    local avg_speed=$(echo "scale=2; $total_speed / $valid_tests" | bc -l 2>/dev/null || echo "0")
+    
+    # Display results
+    echo -e "${CYAN}┌─ Direct Connection Test Results ─────────────────────────────────────────────┐${NC}"
+    printf "${CYAN}│${NC} Valid Tests:     ${GREEN}%d${NC}%*s${CYAN}│${NC}\n" $valid_tests 60 ""
+    printf "${CYAN}│${NC} Average Speed:   ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$(format_speed $avg_speed)" 60 ""
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    
+    # Ask if user wants to test proxies
+    echo
+    read -p "$(echo -e "${YELLOW}❯${NC} Do you want to test proxy speeds? (Y/N): ")" test_proxies
+    
+    if [[ "$test_proxies" =~ ^[Yy]$ ]]; then
+        test_proxy_speeds "$avg_speed"
     fi
     
     echo
     read -p "Press Enter to continue..."
+}
+
+# Function to test proxy speeds
+test_proxy_speeds() {
+    local direct_speed=$1
+    
+    print_section_header "Proxy Speed Test"
+    
+    # Show format example
+    echo -e "${YELLOW}Format: ${WHITE}IP:PORT:USERNAME:PASSWORD${NC}"
+    echo -e "${GRAY}Example:${NC}"
+    echo -e "  ${CYAN}100.150.200.250:30500:user1:pass123${NC}"
+    echo -e "${GRAY}Enter one proxy per line, Press Enter twice to finish.${NC}"
+    echo
+    
+    # Read proxy list using multiline input
+    local proxies_input
+    exec 3>&1 4>&2
+    proxies_input=$(read_multiline_input "Enter proxy list:" 2>&4)
+    exec 3>&- 4>&-
+    
+    if [[ -z "$proxies_input" ]]; then
+        print_error "No proxies provided!"
+        return
+    fi
+    
+    # Parse proxies
+    local proxies=()
+    while IFS= read -r proxy_line; do
+        if [[ -n "$proxy_line" ]]; then
+            proxy_line=$(echo "$proxy_line" | xargs)
+            local colon_count=$(echo "$proxy_line" | tr -cd ':' | wc -c)
+            if [[ $colon_count -eq 3 ]]; then
+                IFS=':' read -r ip port user pass <<< "$proxy_line"
+                if [[ -n "$ip" && -n "$port" && -n "$user" && -n "$pass" ]]; then
+                    if [[ "$port" =~ ^[0-9]+$ ]] && [[ $port -ge 1 ]] && [[ $port -le 65535 ]]; then
+                        # Check for duplicates
+                        local is_duplicate=false
+                        for existing_proxy in "${proxies[@]}"; do
+                            if [[ "$existing_proxy" == "$proxy_line" ]]; then
+                                is_duplicate=true
+                                break
+                            fi
+                        done
+                        
+                        if [[ "$is_duplicate" == false ]]; then
+                            proxies+=("$proxy_line")
+                        fi
+                    fi
+                fi
+            fi
+        fi
+    done <<< "$proxies_input"
+    
+    if [[ ${#proxies[@]} -eq 0 ]]; then
+        print_error "No valid proxies provided!"
+        return
+    fi
+    
+    echo
+    print_color $CYAN "Testing ${#proxies[@]} proxies..."
+    echo
+    
+    # Test servers for proxy testing (smaller files for faster testing)
+    local proxy_test_servers=(
+        "http://speedtest.ftp.otenet.gr/files/test1Mb.db"
+        "http://ipv4.download.thinkbroadband.com/1MB.zip"
+    )
+    
+    # Function to format speed
+    format_speed() {
+        local speed=$1
+        if (( $(echo "$speed >= 1000" | bc -l 2>/dev/null || echo "0") )); then
+            echo "$(echo "scale=2; $speed / 1000" | bc -l 2>/dev/null || echo "0") Gbps"
+        else
+            echo "$(echo "scale=2; $speed" | bc -l 2>/dev/null || echo "0") Mbps"
+        fi
+    }
+    
+    # Function to test single proxy
+    test_single_proxy() {
+        local proxy=$1
+        local proxy_num=$2
+        local total_proxies=$3
+        
+        IFS=':' read -r ip port user pass <<< "$proxy"
+        local curl_proxy="socks5://$user:$pass@$ip:$port"
+        local display_proxy="${ip}:${port}@${user}"
+        
+        if [[ ${#display_proxy} -gt 25 ]]; then
+            display_proxy="${display_proxy:0:22}..."
+        fi
+        
+        local progress_indicator=$(printf "[%2d/%2d]" $proxy_num $total_proxies)
+        
+        # Test proxy connectivity first
+        if ! timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
+            printf "${CYAN}│${NC} %s %-25s ${RED}✗ CONNECTION FAILED${NC}%*s${CYAN}│${NC}\n" \
+                "$progress_indicator" "$display_proxy" 30 ""
+            return
+        fi
+        
+        # Test speed with multiple servers
+        local total_speed=0
+        local valid_tests=0
+        
+        for server in "${proxy_test_servers[@]}"; do
+            local speed_result=$(timeout 15 curl -s -w "%{speed_download}" -o /dev/null --proxy "$curl_proxy" --connect-timeout 8 --max-time 20 "$server" 2>/dev/null)
+            
+            if [[ "$speed_result" =~ ^[0-9]+\.?[0-9]*$ ]] && (( $(echo "$speed_result > 0" | bc -l 2>/dev/null || echo "0") )); then
+                local speed_mbps=$(echo "scale=2; $speed_result / 1024 / 1024 * 8" | bc -l 2>/dev/null || echo "0")
+                total_speed=$(echo "$total_speed + $speed_mbps" | bc -l 2>/dev/null || echo "0")
+                ((valid_tests++))
+            fi
+        done
+        
+        if [[ $valid_tests -gt 0 ]]; then
+            local avg_speed=$(echo "scale=2; $total_speed / $valid_tests" | bc -l 2>/dev/null || echo "0")
+            local speed_percentage=$(echo "scale=1; $avg_speed * 100 / $direct_speed" | bc -l 2>/dev/null || echo "0")
+            
+            # Color code based on performance
+            local speed_color=$GREEN
+            if (( $(echo "$speed_percentage < 50" | bc -l 2>/dev/null || echo "0") )); then
+                speed_color=$RED
+            elif (( $(echo "$speed_percentage < 80" | bc -l 2>/dev/null || echo "0") )); then
+                speed_color=$YELLOW
+            fi
+            
+            printf "${CYAN}│${NC} %s %-25s ${speed_color}%s${NC} (${speed_color}%.1f%%${NC})%*s${CYAN}│${NC}\n" \
+                "$progress_indicator" "$display_proxy" "$(format_speed $avg_speed)" "$speed_percentage" 15 ""
+        else
+            printf "${CYAN}│${NC} %s %-25s ${RED}✗ SPEED TEST FAILED${NC}%*s${CYAN}│${NC}\n" \
+                "$progress_indicator" "$display_proxy" 20 ""
+        fi
+    }
+    
+    # Display results header
+    echo -e "${CYAN}┌─ Proxy Speed Test Results ──────────────────────────────────────────────────┐${NC}"
+    printf "${CYAN}│${NC} Direct Speed: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$(format_speed $direct_speed)" 60 ""
+    echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${NC}"
+    
+    # Test each proxy
+    for i in "${!proxies[@]}"; do
+        test_single_proxy "${proxies[i]}" $((i+1)) ${#proxies[@]}
+    done
+    
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    
+    # Legend
+    echo
+    echo -e "${GRAY}Legend:${NC}"
+    echo -e "  ${GREEN}Green${NC}: 80-100% of direct speed"
+    echo -e "  ${YELLOW}Yellow${NC}: 50-79% of direct speed"
+    echo -e "  ${RED}Red${NC}: Below 50% of direct speed"
 }
 
 # Function to install Danted
