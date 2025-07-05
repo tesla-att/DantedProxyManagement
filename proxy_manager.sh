@@ -291,39 +291,39 @@ check_service_status() {
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 
-    echo -e "${CYAN}┌─ Service Health Check ───────────────────────────────────────────────────────┐${NC}"
+    echo -e "${CYAN}┌─ SERVICE DASHBOARD ──────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${CYAN}│${NC}                                                                              ${CYAN}│${NC}"
     
-    # Service running check
+    # Service status with large visual indicator
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        echo -e "${CYAN}│${NC} Service Running    ${GREEN}████████████████████████████████${NC} ${GREEN}✓${NC}   ${CYAN}│${NC}"
-    else
-        echo -e "${CYAN}│${NC} Service Running    ${RED}████████████████████████████████${NC} ${RED}✗${NC}   ${CYAN}│${NC}"
-    fi
-    
-    # Auto-start check
-    if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
-        echo -e "${CYAN}│${NC} Auto-start Enabled ${GREEN}████████████████████████████████${NC} ${GREEN}✓${NC}   ${CYAN}│${NC}"
-    else
-        echo -e "${CYAN}│${NC} Auto-start Enabled ${RED}████████████████████████████████${NC} ${RED}✗${NC}   ${CYAN}│${NC}"
-    fi
-    
-    # Configuration check
-    if [[ -f "$DANTED_CONFIG" ]]; then
-        echo -e "${CYAN}│${NC} Configuration      ${GREEN}████████████████████████████████${NC} ${GREEN}✓${NC}   ${CYAN}│${NC}"
-    else
-        echo -e "${CYAN}│${NC} Configuration      ${RED}████████████████████████████████${NC} ${RED}✗${NC}   ${CYAN}│${NC}"
-    fi
-    
-    # Connection status
-    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        local connections=$(netstat -tn 2>/dev/null | grep ":1080 " | wc -l 2>/dev/null || echo "0")
-        if [[ $connections -gt 0 ]]; then
-            echo -e "${CYAN}│${NC} Active Connections ${BLUE}████████████████████████████████${NC} ${connections}  ${CYAN}│${NC}"
-        else
-            echo -e "${CYAN}│${NC} Active Connections ${GRAY}████████████████████████████████${NC} 0  ${CYAN}│${NC}"
+        echo -e "${CYAN}│${NC}  ${GREEN}█████ RUNNING${NC}                                                       ${CYAN}│${NC}"
+        local uptime=$(systemctl show $DANTED_SERVICE --property=ActiveEnterTimestamp --value 2>/dev/null)
+        if [[ -n "$uptime" ]]; then
+            local uptime_formatted=$(date -d "$uptime" '+%H:%M:%S' 2>/dev/null || echo "N/A")
+            echo -e "${CYAN}│${NC}  Uptime: ${GREEN}${uptime_formatted}${NC}                                                     ${CYAN}│${NC}"
         fi
     else
-        echo -e "${CYAN}│${NC} Active Connections ${GRAY}████████████████████████████████${NC} -  ${CYAN}│${NC}"
+        echo -e "${CYAN}│${NC}  ${RED}█████ STOPPED${NC}                                                      ${CYAN}│${NC}"
+        echo -e "${CYAN}│${NC}  Service is not running                                                  ${CYAN}│${NC}"
+    fi
+    
+    echo -e "${CYAN}│${NC}                                                                              ${CYAN}│${NC}"
+    echo -e "${CYAN}├─ CONFIGURATION ──────────────────────────────────────────────────────────────┤${NC}"
+    
+    # Configuration details
+    if [[ -f "$DANTED_CONFIG" ]]; then
+        local config_ip=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}' 2>/dev/null || echo "N/A")
+        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null || echo "N/A")
+        printf "${CYAN}│${NC} Listen Address: ${YELLOW}%-20s${NC} Port: ${YELLOW}%-10s${NC}                    ${CYAN}│${NC}\n" "$config_ip" "$config_port"
+    else
+        echo -e "${CYAN}│${NC} ${RED}Configuration file not found${NC}                                            ${CYAN}│${NC}"
+    fi
+    
+    # Auto-start status
+    if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
+        echo -e "${CYAN}│${NC} Auto-start: ${GREEN}ENABLED${NC}                                                    ${CYAN}│${NC}"
+    else
+        echo -e "${CYAN}│${NC} Auto-start: ${RED}DISABLED${NC}                                                   ${CYAN}│${NC}"
     fi
     
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
