@@ -471,7 +471,7 @@ install_danted() {
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
         print_warning "Danted is already installed and running."
         echo -e "${YELLOW}You can reinstall it, but this will stop the current service.${NC}"
-        read -p "$(echo -e "${YELLOW}❯${NC} Do you want to reinstall? (y/N): ")" reinstall
+        read -p "$(echo -e "${YELLOW}❯${NC} Do you want to reinstall? (Y/N): ")" reinstall
         if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
             return
         fi
@@ -1105,7 +1105,7 @@ delete_users() {
     done
     
     echo
-    read -p "$(echo -e "${RED}❯${NC} Are you sure you want to delete these users? (y/N): ")" confirm
+    read -p "$(echo -e "${RED}❯${NC} Are you sure you want to delete these users? (Y/N): ")" confirm
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         print_warning "Operation cancelled."
         read -p "Press Enter to continue..."
@@ -1351,7 +1351,7 @@ uninstall_danted() {
     echo -e "${RED}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     
     echo
-    read -p "$(echo -e "${RED}❯${NC} Are you sure you want to uninstall Danted? (y/N): ")" confirm
+    read -p "$(echo -e "${RED}❯${NC} Are you sure you want to uninstall Danted? (Y/N): ")" confirm
     
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         print_warning "Operation cancelled."
@@ -1379,7 +1379,7 @@ uninstall_danted() {
     # Ask about user configs
     if [[ -d "$CONFIG_DIR" ]] && [[ $(ls -A "$CONFIG_DIR" 2>/dev/null) ]]; then
         echo
-        read -p "$(echo -e "${YELLOW}❯${NC} Do you want to remove all user config files in '$CONFIG_DIR'? (y/N): ")" remove_configs
+        read -p "$(echo -e "${YELLOW}❯${NC} Do you want to remove all user config files in '$CONFIG_DIR'? (Y/N): ")" remove_configs
         if [[ "$remove_configs" =~ ^[Yy]$ ]]; then
             rm -rf "$CONFIG_DIR"
             print_success "User config files removed"
@@ -1401,7 +1401,7 @@ uninstall_danted() {
             echo -e "  ${YELLOW}•${NC} $user"
         done
         echo
-        read -p "$(echo -e "${YELLOW}❯${NC} Do you want to remove all SOCKS5 users? (y/N): ")" remove_users
+        read -p "$(echo -e "${YELLOW}❯${NC} Do you want to remove all SOCKS5 users? (Y/N): ")" remove_users
         if [[ "$remove_users" =~ ^[Yy]$ ]]; then
             for user in "${socks_users[@]}"; do
                 userdel "$user" 2>/dev/null
