@@ -279,10 +279,6 @@ check_service_status() {
         local status_icon="●"
     fi
     
-       # Service status line (dùng định dạng cột cố định)
-    local box_width=77
-    local label_width=13
-
     # Service
     local label_service="Service:"
     local value_service="${color}${service_display}${NC}"
@@ -291,23 +287,45 @@ check_service_status() {
     local padding_service=$((box_width - label_width - value_service_len))
     printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_service" "$value_service" $padding_service ""
 
-    # Auto-start
+    
+    # Auto-start status
     local label_autostart="Auto-start:"
     local value_autostart="${autostart_color}${autostart_display}${NC}"
     local value_autostart_stripped=$(strip_color "$autostart_display")
     local value_autostart_len=${#value_autostart_stripped}
     local padding_autostart=$((box_width - label_width - value_autostart_len))
     printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_autostart" "$value_autostart" $padding_autostart ""
-
-    # Listen on
+    
+    # Listen address
+    if [[ -f "$DANTED_CONFIG" ]]; then
+        local config_ip=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}' 2>/dev/null || echo "N/A")
+        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null || echo "N/A")
+        local listen_address="${config_ip}:${config_port}"
+        
+        # Truncate if too long
+        if [[ ${#listen_address} -gt 25 ]]; then
+            listen_address="${listen_address:0:22}..."
+        fi
+    else
+        local listen_address="Not configured"
+    fi
     local label_listen="Listen on:"
     local value_listen="${listen_color}${listen_address}${NC}"
     local value_listen_stripped=$(strip_color "$listen_address")
     local value_listen_len=${#value_listen_stripped}
     local padding_listen=$((box_width - label_width - value_listen_len))
     printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_listen" "$value_listen" $padding_listen ""
-
-    # Connections
+    
+    # Active connections
+    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null && [[ -f "$DANTED_CONFIG" ]]; then
+        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null)
+        local connections=$(netstat -tn 2>/dev/null | grep ":$config_port " | wc -l 2>/dev/null || echo "0")
+        local conn_display="${connections} active"
+        local conn_color=$BLUE
+    else
+        local conn_display="N/A"
+        local conn_color=$GRAY
+    fi
     local label_conn="Connections:"
     local value_conn="${conn_color}${conn_display}${NC}"
     local value_conn_stripped=$(strip_color "$conn_display")
