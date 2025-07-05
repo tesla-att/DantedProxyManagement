@@ -436,6 +436,8 @@ check_service_status() {
 
 # Function to test bandwidth
 test_bandwidth() {
+    clear
+    print_header
     print_section_header "Internet Bandwidth Test"
     
     # Multiple test servers for better accuracy
@@ -509,8 +511,8 @@ test_bandwidth() {
     
     # Display results
     echo -e "${CYAN}┌─ Direct Connection Test Results ─────────────────────────────────────────────┐${NC}"
-    printf "${CYAN}│${NC} Valid Tests:     ${GREEN}%d${NC}%*s${CYAN}│${NC}\n" $valid_tests 60 ""
-    printf "${CYAN}│${NC} Average Speed:   ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$(format_speed $avg_speed)" 60 ""
+    printf "${CYAN}${NC} Valid Tests:     ${GREEN}%d${NC}%*s${CYAN}${NC}\n" $valid_tests 60 ""
+    printf "${CYAN}${NC} Average Speed:   ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$(format_speed $avg_speed)" 60 ""
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     
     # Ask if user wants to test proxies
@@ -620,7 +622,7 @@ test_proxy_speeds() {
         
         # Test proxy connectivity first
         if ! timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            printf "${CYAN}│${NC} %s %-25s ${RED}✗ CONNECTION FAILED${NC}%*s${CYAN}│${NC}\n" \
+            printf "${CYAN}${NC} %s %-25s ${RED}✗ CONNECTION FAILED${NC}%*s${CYAN}${NC}\n" \
                 "$progress_indicator" "$display_proxy" 30 ""
             return
         fi
@@ -651,17 +653,17 @@ test_proxy_speeds() {
                 speed_color=$YELLOW
             fi
             
-            printf "${CYAN}│${NC} %s %-25s ${speed_color}%s${NC} (${speed_color}%.1f%%${NC})%*s${CYAN}│${NC}\n" \
+            printf "${CYAN}${NC} %s %-25s ${speed_color}%s${NC} (${speed_color}%.1f%%${NC})%*s${CYAN}${NC}\n" \
                 "$progress_indicator" "$display_proxy" "$(format_speed $avg_speed)" "$speed_percentage" 15 ""
         else
-            printf "${CYAN}│${NC} %s %-25s ${RED}✗ SPEED TEST FAILED${NC}%*s${CYAN}│${NC}\n" \
+            printf "${CYAN}${NC} %s %-25s ${RED}✗ SPEED TEST FAILED${NC}%*s${CYAN}${NC}\n" \
                 "$progress_indicator" "$display_proxy" 20 ""
         fi
     }
     
     # Display results header
-    echo -e "${CYAN}┌─ Proxy Speed Test Results ──────────────────────────────────────────────────┐${NC}"
-    printf "${CYAN}│${NC} Direct Speed: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$(format_speed $direct_speed)" 60 ""
+    echo -e "${CYAN}┌─ Proxy Speed Test Results ───────────────────────────────────────────────────┐${NC}"
+    printf "${CYAN}${NC} Direct Speed: ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$(format_speed $direct_speed)" 60 ""
     echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${NC}"
     
     # Test each proxy
