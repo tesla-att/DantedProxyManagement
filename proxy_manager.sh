@@ -270,7 +270,7 @@ show_system_info() {
         
         # Total box width is 79 characters (including borders)
         # Content area is 77 characters
-        local padding=$((79 - content_len))
+        local padding=$((78 - content_len))
         
         # Ensure padding is not negative
         if [ $padding -lt 0 ]; then
