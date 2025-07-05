@@ -277,7 +277,7 @@ check_service_status() {
     # Service status line
     local service_display="${status_icon} ${status}"
     local service_content_length=$((14 + ${#service_display}))  # " Service:      " + display
-    local service_padding=$((75 - service_content_length))
+    local service_padding=$((78 - service_content_length))
     printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
     
     # Auto-start status
@@ -289,7 +289,7 @@ check_service_status() {
         local autostart_color=$RED
     fi
     local autostart_content_length=$((14 + ${#autostart_display}))  # " Auto-start:   " + display
-    local autostart_padding=$((75 - autostart_content_length))
+    local autostart_padding=$((78 - autostart_content_length))
     printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
     
     # Listen address
@@ -376,7 +376,7 @@ check_service_status() {
         "2. Stop Service"           
         "3. View Full Logs"
         "4. Test Internet Bandwidth"
-        "0. Back to Main Menu"
+        "5. Back to Main Menu"
     )
 
     for item in "${control_items[@]}"; do
@@ -389,7 +389,7 @@ check_service_status() {
     echo
     
     while true; do
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-4]: ")" choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-5]: ")" choice
         
         case $choice in
             1)
@@ -427,7 +427,7 @@ check_service_status() {
                 check_service_status
                 return
                 ;;
-            0)
+            5)
                 break
                 ;;
             *)
@@ -1023,7 +1023,7 @@ manage_add_users() {
     local add_user_items=(
         "1. Add single user"
         "2. Add multiple users"
-        "0. Back to main menu"
+        "3. Back to main menu"
     )
 
     for item in "${add_user_items[@]}"; do
@@ -1035,12 +1035,12 @@ manage_add_users() {
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
         
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-2]: ")" choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-3]: ")" choice
         
         case $choice in
             1) add_single_user ;;
             2) add_multi_users ;;
-            0) break ;;
+            3) break ;;
             *) print_error "Invalid option!" ;;
         esac
     done
@@ -1472,7 +1472,7 @@ main() {
     
     while true; do
         show_main_menu
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-7]: ")" choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-8]: ")" choice
         
         case $choice in
             1) install_danted ;;
@@ -1482,9 +1482,12 @@ main() {
             5) test_proxies ;;
             6) check_service_status ;;
             7) uninstall_danted ;;
-            0) 
+            8) 
                 # Clear screen and show thank you message
                 clear
+                print_header
+                print_section_header "Thank You"
+                echo
                 echo -e "${GREEN}┌─ Thank You ──────────────────────────────────────────────────────────────────┐${NC}"
                 local thank_msg="Thank you for using Danted SOCKS5 Proxy Manager!"
                 local thank_length=$((${#thank_msg} + 1))
