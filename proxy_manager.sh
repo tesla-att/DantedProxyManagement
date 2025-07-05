@@ -594,9 +594,9 @@ show_users() {
         local header_length=${#header_title}
         local header_padding=$((75 - header_length))  # 78 - 6 (for "─ " and " ") = 69
 
-        printf "${CYAN}┌─── %s" "$header_title"
+        printf "${CYAN}┌ %s" "$header_title"
         for ((i=0; i<$header_padding; i++)); do printf "─"; done
-        printf "──┐${NC}\n"
+        printf "┐${NC}\n"
 
         # Display users with proper formatting
         for i in "${!users[@]}"; do
