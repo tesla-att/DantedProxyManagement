@@ -296,15 +296,33 @@ check_service_status() {
     
     # Service status with large visual indicator
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
-        echo -e "${CYAN}│${NC}  ${GREEN}█████ RUNNING${NC}                                                       ${CYAN}│${NC}"
+        local status_text="█████ RUNNING"
+        local status_content="  ${GREEN}${status_text}${NC}"
+        local status_length=$((${#status_text} + 2))  # +2 for leading spaces
+        local status_padding=$((78 - status_length))
+        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$status_content" $status_padding ""
+        
         local uptime=$(systemctl show $DANTED_SERVICE --property=ActiveEnterTimestamp --value 2>/dev/null)
         if [[ -n "$uptime" ]]; then
             local uptime_formatted=$(date -d "$uptime" '+%H:%M:%S' 2>/dev/null || echo "N/A")
-            echo -e "${CYAN}│${NC}  Uptime: ${GREEN}${uptime_formatted}${NC}                                                     ${CYAN}│${NC}"
+            local uptime_text="Uptime: ${uptime_formatted}"
+            local uptime_content="  ${GREEN}${uptime_text}${NC}"
+            local uptime_length=$((${#uptime_text} + 2))  # +2 for leading spaces
+            local uptime_padding=$((78 - uptime_length))
+            printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$uptime_content" $uptime_padding ""
         fi
     else
-        echo -e "${CYAN}│${NC}  ${RED}█████ STOPPED${NC}                                                      ${CYAN}│${NC}"
-        echo -e "${CYAN}│${NC}  Service is not running                                                  ${CYAN}│${NC}"
+        local status_text="█████ STOPPED"
+        local status_content="  ${RED}${status_text}${NC}"
+        local status_length=$((${#status_text} + 2))  # +2 for leading spaces
+        local status_padding=$((78 - status_length))
+        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$status_content" $status_padding ""
+        
+        local not_running_text="Service is not running"
+        local not_running_content="  ${not_running_text}"
+        local not_running_length=$((${#not_running_text} + 2))  # +2 for leading spaces
+        local not_running_padding=$((78 - not_running_length))
+        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$not_running_content" $not_running_padding ""
     fi
     
     echo -e "${CYAN}│${NC}                                                                              ${CYAN}│${NC}"
@@ -314,16 +332,33 @@ check_service_status() {
     if [[ -f "$DANTED_CONFIG" ]]; then
         local config_ip=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}' 2>/dev/null || echo "N/A")
         local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null || echo "N/A")
-        printf "${CYAN}│${NC} Listen Address: ${YELLOW}%-20s${NC} Port: ${YELLOW}%-10s${NC}                    ${CYAN}│${NC}\n" "$config_ip" "$config_port"
+        
+        local config_text="Listen Address: ${config_ip} Port: ${config_port}"
+        local config_content=" ${YELLOW}${config_text}${NC}"
+        local config_length=$((${#config_text} + 1))  # +1 for leading space
+        local config_padding=$((78 - config_length))
+        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$config_content" $config_padding ""
     else
-        echo -e "${CYAN}│${NC} ${RED}Configuration file not found${NC}                                            ${CYAN}│${NC}"
+        local config_text="Configuration file not found"
+        local config_content=" ${RED}${config_text}${NC}"
+        local config_length=$((${#config_text} + 1))  # +1 for leading space
+        local config_padding=$((78 - config_length))
+        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$config_content" $config_padding ""
     fi
     
     # Auto-start status
     if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
-        echo -e "${CYAN}│${NC} Auto-start: ${GREEN}ENABLED${NC}                                                    ${CYAN}│${NC}"
+        local autostart_text="Auto-start: ENABLED"
+        local autostart_content=" ${GREEN}${autostart_text}${NC}"
+        local autostart_length=$((${#autostart_text} + 1))  # +1 for leading space
+        local autostart_padding=$((78 - autostart_length))
+        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$autostart_content" $autostart_padding ""
     else
-        echo -e "${CYAN}│${NC} Auto-start: ${RED}DISABLED${NC}                                                   ${CYAN}│${NC}"
+        local autostart_text="Auto-start: DISABLED"
+        local autostart_content=" ${RED}${autostart_text}${NC}"
+        local autostart_length=$((${#autostart_text} + 1))  # +1 for leading space
+        local autostart_padding=$((78 - autostart_length))
+        printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$autostart_content" $autostart_padding ""
     fi
     
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
