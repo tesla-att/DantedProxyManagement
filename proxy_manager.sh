@@ -269,7 +269,7 @@ show_system_info() {
         local content_len=$((label_len + value_len + 3)) # ": " adds 2, space adds 1
         
         # Total box width is 79 characters (including borders)
-        # Content area is 77 characters
+        # Content area is 78 characters
         local padding=$((78 - content_len))
         
         # Ensure padding is not negative
@@ -1497,7 +1497,3 @@ main() {
 
 # Run main function
 main "$@"
-
-strip_color() {
-    echo -e "$1" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g'
-}
