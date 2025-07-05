@@ -640,8 +640,11 @@ create_user_config() {
     if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
         # Try to get from existing config
         if [[ -f "$DANTED_CONFIG" ]]; then
-            SELECTED_IP=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}')
-            SELECTED_PORT=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ')
+            internal_line=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1)
+            if [ -n "$internal_line" ]; then
+                SELECTED_IP=$(echo "$internal_line" | sed -n 's/.*internal:[[:space:]]*\([^[:space:]]*\).*/\1/p' | sed 's/port=.*//')
+                SELECTED_PORT=$(echo "$internal_line" | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
+            fi
         fi
     fi
     
