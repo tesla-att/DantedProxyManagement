@@ -211,6 +211,7 @@ show_system_info() {
     dante_status="Unknown"
     auto_start_status="Unknown"
     listen_address="Unknown"
+    listen_port="Unknown"
     active_connections="0"
 
     # Check Dante service status

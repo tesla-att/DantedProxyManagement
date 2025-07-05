@@ -476,7 +476,7 @@ change_port() {
     fi
     
     echo -e "${CYAN}┌─ Current Configuration ─────────────────────────────────────────────────────┐${NC}"
-    printf "${CYAN}│${NC} Current Port: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$current_port" 60 ""
+    printf "${CYAN}${NC} Current Port: ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$current_port" 60 ""
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
     
