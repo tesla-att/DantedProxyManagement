@@ -298,7 +298,7 @@ check_service_status() {
     if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
         local status_text="█████ RUNNING"
         local status_content="  ${GREEN}${status_text}${NC}"
-        local status_length=$((${#status_text} + 2))  # +2 for leading spaces
+        local status_length=$(($(echo -n "$(strip_color "$status_text")" | wc -c) + 2))  # +2 for leading spaces
         local status_padding=$((78 - status_length))
         printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$status_content" $status_padding ""
         
@@ -307,20 +307,20 @@ check_service_status() {
             local uptime_formatted=$(date -d "$uptime" '+%H:%M:%S' 2>/dev/null || echo "N/A")
             local uptime_text="Uptime: ${uptime_formatted}"
             local uptime_content="  ${GREEN}${uptime_text}${NC}"
-            local uptime_length=$((${#uptime_text} + 2))  # +2 for leading spaces
+            local uptime_length=$(($(echo -n "$(strip_color "$uptime_text")" | wc -c) + 2))
             local uptime_padding=$((78 - uptime_length))
             printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$uptime_content" $uptime_padding ""
         fi
     else
         local status_text="█████ STOPPED"
         local status_content="  ${RED}${status_text}${NC}"
-        local status_length=$((${#status_text} + 2))  # +2 for leading spaces
+        local status_length=$(($(echo -n "$(strip_color "$status_text")" | wc -c) + 2))
         local status_padding=$((78 - status_length))
         printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$status_content" $status_padding ""
         
         local not_running_text="Service is not running"
         local not_running_content="  ${not_running_text}"
-        local not_running_length=$((${#not_running_text} + 2))  # +2 for leading spaces
+        local not_running_length=$(($(echo -n "$(strip_color "$not_running_text")" | wc -c) + 2))
         local not_running_padding=$((78 - not_running_length))
         printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$not_running_content" $not_running_padding ""
     fi
@@ -335,13 +335,13 @@ check_service_status() {
         
         local config_text="Listen Address: ${config_ip} Port: ${config_port}"
         local config_content=" ${YELLOW}${config_text}${NC}"
-        local config_length=$((${#config_text} + 1))  # +1 for leading space
+        local config_length=$(($(echo -n "$(strip_color "$config_text")" | wc -c) + 1))  # +1 for leading space
         local config_padding=$((78 - config_length))
         printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$config_content" $config_padding ""
     else
         local config_text="Configuration file not found"
         local config_content=" ${RED}${config_text}${NC}"
-        local config_length=$((${#config_text} + 1))  # +1 for leading space
+        local config_length=$(($(echo -n "$(strip_color "$config_text")" | wc -c) + 1))
         local config_padding=$((78 - config_length))
         printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$config_content" $config_padding ""
     fi
@@ -350,13 +350,13 @@ check_service_status() {
     if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
         local autostart_text="Auto-start: ENABLED"
         local autostart_content=" ${GREEN}${autostart_text}${NC}"
-        local autostart_length=$((${#autostart_text} + 1))  # +1 for leading space
+        local autostart_length=$(($(echo -n "$(strip_color "$autostart_text")" | wc -c) + 1))
         local autostart_padding=$((78 - autostart_length))
         printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$autostart_content" $autostart_padding ""
     else
         local autostart_text="Auto-start: DISABLED"
         local autostart_content=" ${RED}${autostart_text}${NC}"
-        local autostart_length=$((${#autostart_text} + 1))  # +1 for leading space
+        local autostart_length=$(($(echo -n "$(strip_color "$autostart_text")" | wc -c) + 1))
         local autostart_padding=$((78 - autostart_length))
         printf "${CYAN}│${NC}%s%*s${CYAN}│${NC}\n" "$autostart_content" $autostart_padding ""
     fi
@@ -594,9 +594,9 @@ show_users() {
         local header_length=${#header_title}
         local header_padding=$((75 - header_length))  # 78 - 6 (for "─ " and " ") = 69
 
-        printf "${CYAN}╭─ %s" "$header_title"
+        printf "${CYAN}┌─── %s" "$header_title"
         for ((i=0; i<$header_padding; i++)); do printf "─"; done
-        printf "╮${NC}\n"
+        printf "──┐${NC}\n"
 
         # Display users with proper formatting
         for i in "${!users[@]}"; do
@@ -1503,3 +1503,7 @@ main() {
 
 # Run main function
 main "$@"
+
+strip_color() {
+    echo -e "$1" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g'
+}
