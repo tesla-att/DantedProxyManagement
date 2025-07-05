@@ -55,7 +55,7 @@ print_section_header() {
     local padding=$((77 - title_length))
     
     echo -e "${BLUE}┌──────────────────────────────────────────────────────────────────────────────┐${NC}"
-    printf "${BLUE}│${WHITE}${BOLD} %s${NC}${BLUE}%*s│${NC}\n" "$title" $padding ""
+    printf  "${BLUE}│${WHITE}${BOLD} %s${NC}${BLUE}%*s│${NC}\n" "$title" $padding ""
     echo -e "${BLUE}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
@@ -68,7 +68,7 @@ print_info_box() {
     local padding=$((77 - msg_length))
     
     echo -e "${color}┌─ INFO ───────────────────────────────────────────────────────────────────────┐${NC}"
-    printf "${color}│ %s%*s│${NC}\n" "$message" $padding ""
+    printf  "${color}│ %s%*s│${NC}\n" "$message" $padding ""
     echo -e "${color}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
@@ -155,7 +155,7 @@ get_network_interfaces() {
     local counter=1
     
     # Header with fixed width
-    echo -e "${CYAN}╭─ Available Network Interfaces ───────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}┌─ Available Network Interfaces ───────────────────────────────────────────────┐${NC}"
     printf "${CYAN}│${NC} ${WHITE}No.${NC} ${WHITE}Interface Name       ${WHITE}IP Address${NC}%*s${CYAN}│${NC}\n" 42 ""
 
     # Loop through network interfaces and IPs
@@ -177,7 +177,7 @@ get_network_interfaces() {
         fi
     done < <(ip -4 addr show | grep -oP '^\d+: \K\w+|inet \K[^/]+' | paste - -)
     # Footer with fixed width
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
     
     if [[ ${#interfaces[@]} -eq 0 ]]; then
@@ -214,7 +214,7 @@ get_system_info() {
     fi
     
     # Fixed width box - 77 characters total width
-    echo -e "${CYAN}╭─ System Information ─────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}┌─ System Information ─────────────────────────────────────────────────────────┐${NC}"
 
     # CPU Usage - fixed width formatting
     local cpu_display="${cpu_usage}%"
@@ -242,7 +242,7 @@ get_system_info() {
     printf "${CYAN}│${NC} Uptime:       ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$uptime_info" $uptime_padding ""
     
     # Footer with fixed width
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
 }
 
 # Function to check service status
@@ -251,7 +251,7 @@ check_service_status() {
     print_section_header "Service Status & System Monitoring"
     
     # Service status - Fixed width box with rounded corners
-    echo -e "${CYAN}╭─ Danted Service Status ──────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}┌─ Danted Service Status ──────────────────────────────────────────────────────┐${NC}"
     
     # Check if service is running first
     #if ! systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null; then
@@ -324,7 +324,7 @@ check_service_status() {
     local conn_padding=$((77 - conn_content_length))
     printf "${CYAN}│${NC} Connections:  ${conn_color}%s${NC}%*s${CYAN}│${NC}\n" "$conn_display" $conn_padding ""
     
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
     
     # System information
@@ -332,7 +332,7 @@ check_service_status() {
     echo
     
     # Recent logs - Fixed width with rounded corners
-    echo -e "${CYAN}╭─ Recent Service Logs ────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}┌─ Recent Service Logs ────────────────────────────────────────────────────────┐${NC}"
     
     # Log header
     local log_header="Last 3 logs from the last hour:"
@@ -365,11 +365,11 @@ check_service_status() {
         printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$log_warning" $log_warning_padding ""
     fi
     
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
     
     # Control options with box formatting
-    echo -e "${YELLOW}╭─ Control Options ────────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${YELLOW}┌─ Control Options ────────────────────────────────────────────────────────────┐${NC}"
 
     local control_items=(
         "1. Restart Service"
@@ -385,7 +385,7 @@ check_service_status() {
         printf "${YELLOW}│${NC} ${CYAN}%s${NC}%*s${YELLOW}│${NC}\n" "$item" $item_padding ""
     done
 
-    echo -e "${YELLOW}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${YELLOW}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
     
     while true; do
@@ -586,12 +586,12 @@ show_users() {
 
     if [[ ${#users[@]} -eq 0 ]]; then
         # Empty state with proper box formatting
-        echo -e "${CYAN}╭─ Users List (0 users) ───────────────────────────────────────────────────────╮${NC}"
+        echo -e "${CYAN}┌─ Users List (0 users) ───────────────────────────────────────────────────────┐${NC}"
         local warning_msg="No SOCKS5 users found."
         local warning_length=$((${#warning_msg} + 1))
         local warning_padding=$((78 - warning_length))
         printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
-        echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+        echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     else
         # Header with user count
         local header_title="Users List (${#users[@]} users)"
@@ -612,7 +612,7 @@ show_users() {
             printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
         done
 
-        echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+        echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     fi
 
     echo
@@ -1018,7 +1018,7 @@ manage_add_users() {
         print_header
         print_section_header "Add Users Menu"
         
-    echo -e "${CYAN}╭─ Add Users Options ──────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}┌─ Add Users Options ──────────────────────────────────────────────────────────┐${NC}"
 
     local add_user_items=(
         "1. Add single user"
@@ -1032,7 +1032,7 @@ manage_add_users() {
         printf "${CYAN}│${NC} ${CYAN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
     done
 
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
         
         read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-2]: ")" choice
@@ -1073,7 +1073,7 @@ delete_users() {
         return
     fi
     
-    echo -e "${CYAN}╭─ Available Users to Delete ──────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}┌─ Available Users to Delete ──────────────────────────────────────────────────┐${NC}"
     for i in "${!users[@]}"; do
         local user_number=$(printf "%3d." $((i+1)))
         local user_display="$user_number ${users[i]}"
@@ -1082,7 +1082,7 @@ delete_users() {
         
         printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
     done
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     
     echo
     
@@ -1248,7 +1248,7 @@ test_proxies() {
     local total_count=${#proxies[@]}
     
 # Proxy test results with proper box formatting
-    echo -e "${CYAN}╭─ Proxy Test Results ─────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}┌─ Proxy Test Results ─────────────────────────────────────────────────────────┐${NC}"
 
     for i in "${!proxies[@]}"; do
         local proxy="${proxies[i]}"
@@ -1291,7 +1291,7 @@ test_proxies() {
         
     done
 
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     
     local success_rate=0
     if [[ $total_count -gt 0 ]]; then
@@ -1299,7 +1299,7 @@ test_proxies() {
     fi
     
     echo
-    echo -e "${CYAN}╭─ Test Summary ────────────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}┌─ Test Summary ────────────────────────────────────────────────────────────────┐${NC}"
 
     # Total Proxies
     local total_text="Total Proxies: $total_count"
@@ -1326,7 +1326,7 @@ test_proxies() {
     local rate_padding=$((78 - rate_length))
     printf "${CYAN}${NC} Success Rate:    ${YELLOW}%s%%${NC}%*s${CYAN}${NC}\n" "$success_rate" $rate_padding ""
 
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     
     echo
     read -p "Press Enter to continue..."
@@ -1337,7 +1337,7 @@ uninstall_danted() {
     print_header
     print_section_header "Uninstall Danted"
     
-    echo -e "${RED}╭─ WARNING ────────────────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${RED}┌─ WARNING ────────────────────────────────────────────────────────────────────┐${NC}"
 
     # First warning line
     local warning1="This will completely remove Danted and all configurations!"
@@ -1351,7 +1351,7 @@ uninstall_danted() {
     local warning2_padding=$((78 - warning2_length))
     printf "${RED}│${NC} %s%*s${RED}│${NC}\n" "$warning2" $warning2_padding ""
 
-    echo -e "${RED}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${RED}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     
     echo
     read -p "$(echo -e "${RED}❯${NC} Are you sure you want to uninstall Danted? (y/N): ")" confirm
@@ -1427,7 +1427,7 @@ show_main_menu() {
     print_section_header "Main Menu"
     
     # Menu box with rounded corners
-    echo -e "${CYAN}╭─ Menu Options ───────────────────────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}┌─ Menu Options ───────────────────────────────────────────────────────────────┐${NC}"
     
     # Menu items with proper padding
     local menu_items=(
@@ -1447,7 +1447,7 @@ show_main_menu() {
         printf "${CYAN}│${NC} ${CYAN}%s${NC}%*s${CYAN}│${NC}\n" "$item" $item_padding ""
     done
     
-    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 }
 
@@ -1485,12 +1485,12 @@ main() {
             0) 
                 # Clear screen and show thank you message
                 clear
-                echo -e "${GREEN}╭─ Thank You ──────────────────────────────────────────────────────────────────╮${NC}"
+                echo -e "${GREEN}┌─ Thank You ──────────────────────────────────────────────────────────────────┐${NC}"
                 local thank_msg="Thank you for using Danted SOCKS5 Proxy Manager!"
                 local thank_length=$((${#thank_msg} + 1))
                 local thank_padding=$((78 - thank_length))
                 printf "${GREEN}│${NC} %s%*s${GREEN}│${NC}\n" "$thank_msg" $thank_padding ""
-                echo -e "${GREEN}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
+                echo -e "${GREEN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
                 echo
                 exit 0
                 ;;
