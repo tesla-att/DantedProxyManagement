@@ -201,7 +201,7 @@ get_network_interfaces() {
 
 # Function to display system information with Dante status
 show_system_info() {
-    # Thu thập thông tin hệ thống (giả sử đã có sẵn)
+    # Collect system information
     cpu_usage=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}' | cut -d. -f1)
     memory_info=$(free -h | grep '^Mem:')
     memory_used=$(echo $memory_info | awk '{print $3}')
@@ -209,13 +209,13 @@ show_system_info() {
     disk_usage=$(df -h / | awk 'NR==2 {print $5}')
     uptime_info=$(uptime -p | sed 's/up //')
     
-    # Thêm các biến để thu thập thông tin Dante
+    # Add variables to collect Dante information
     dante_status="Unknown"
     auto_start_status="Unknown"
     listen_address="Unknown"
     active_connections="0"
 
-    # Kiểm tra trạng thái Dante service
+    # Check Dante service status
     if systemctl is-active --quiet danted 2>/dev/null; then
         dante_status="Running"
     elif systemctl is-failed --quiet danted 2>/dev/null; then
@@ -224,21 +224,21 @@ show_system_info() {
         dante_status="Stopped"
     fi
 
-    # Kiểm tra auto-start status
+    # Check auto-start status
     if systemctl is-enabled --quiet danted 2>/dev/null; then
         auto_start_status="Enabled"
     else
         auto_start_status="Disabled"
     fi
 
-    # Lấy listen address từ config file hoặc netstat
+    # Get listen address from config file or netstat
     if [ -f /etc/danted.conf ]; then
         listen_address=$(grep -E "^[[:space:]]*internal:" /etc/danted.conf | head -1 | awk '{print $2}' | sed 's/port=//')
         if [ -z "$listen_address" ]; then
             listen_address="Not configured"
         fi
     else
-        # Fallback: kiểm tra từ netstat
+        # Fallback: check from netstat
         listen_port=$(netstat -tlnp 2>/dev/null | grep danted | head -1 | awk '{print $4}' | cut -d: -f2)
         if [ -z "$listen_port" ]; then
             listen_address="Not found"
@@ -247,7 +247,7 @@ show_system_info() {
         fi
     fi
 
-    # Đếm số kết nối active - simplified
+    # Count active connections - simplified
     active_connections="0"
     if command -v ss >/dev/null 2>&1; then
         conn_count=$(ss -tn 2>/dev/null | grep -E ":1080|:8080|:3128" | wc -l)
@@ -312,7 +312,7 @@ show_system_info() {
     fi
     print_info_line "Auto-start Status" "$auto_start_status" "$autostart_color"
 
-    print_info_line "Listen Address" "$listen_address" "${GREEN}"
+    print_info_line "Listen Address" "$listen_address"":""$SELECTED_PORT" "${GREEN}"
     print_info_line "Active Connections" "$active_connections" "${GREEN}"
 
     # Footer
