@@ -1064,7 +1064,21 @@ delete_users() {
         return
     fi
 
+    echo
+    echo -e "${CYAN}┌─ Available Users to Delete ──────────────────────────────────────────────────┐${NC}"
+    for i in "${!users[@]}"; do
+        local user_number=$(printf "%3d." $((i+1)))
+        local user_display="$user_number ${users[i]}"
+        local user_length=$((${#user_display} + 1))  # +1 for leading space
+        local user_padding=$((78 - user_length))
+        
+        printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
+    done
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo
+        
     print_info_box "Enter user numbers to delete (space-separated, e.g., '1 3 5'):"
+    read -p "$(echo -e "${YELLOW}❯${NC} Selection: ")" selections
     
     if [[ -z "$selections" ]]; then
         print_warning "No selection made."
@@ -1082,7 +1096,6 @@ delete_users() {
         printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
     done
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
-    read -p "$(echo -e "${YELLOW}❯${NC} Selection: ")" selections
     echo
     
     local to_delete=()
