@@ -291,7 +291,6 @@ check_service_status() {
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
 
-show_service_status_progress() {
     echo -e "${CYAN}┌─ Service Health Check ───────────────────────────────────────────────────────┐${NC}"
     
     # Service running check
@@ -329,7 +328,7 @@ show_service_status_progress() {
     
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
-}
+
     # Control options with box formatting
     echo -e "${YELLOW}┌─ Control Options ────────────────────────────────────────────────────────────┐${NC}"
 
