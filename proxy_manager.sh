@@ -279,59 +279,41 @@ check_service_status() {
         local status_icon="●"
     fi
     
-    # Service status line
-    local service_display="${status_icon} ${status}"
-    local service_display_stripped=$(strip_color "$service_display")
-    local service_content_length=$((14 + ${#service_display_stripped}))  # " Service:      " + display
-    local service_padding=$((77 - service_content_length))
-    printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
-    
-    # Auto-start status
-    if systemctl is-enabled --quiet $DANTED_SERVICE 2>/dev/null; then
-        local autostart_display="● ENABLED"
-        local autostart_color=$GREEN
-    else
-        local autostart_display="● DISABLED"
-        local autostart_color=$RED
-    fi
-    local autostart_display_stripped=$(strip_color "$autostart_display")
-    local autostart_content_length=$((14 + ${#autostart_display_stripped}))  # " Auto-start:   " + display
-    local autostart_padding=$((77 - autostart_content_length))
-    printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
-    
-    # Listen address
-    if [[ -f "$DANTED_CONFIG" ]]; then
-        local config_ip=$(grep "internal:" "$DANTED_CONFIG" | awk '{print $2}' 2>/dev/null || echo "N/A")
-        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null || echo "N/A")
-        local listen_address="${config_ip}:${config_port}"
-        
-        # Truncate if too long
-        if [[ ${#listen_address} -gt 25 ]]; then
-            listen_address="${listen_address:0:22}..."
-        fi
-    else
-        local listen_address="Not configured"
-    fi
-    local listen_address_stripped=$(strip_color "$listen_address")
-    local listen_content_length=$((14 + ${#listen_address_stripped}))  # " Listen on:    " + display
-    local listen_padding=$((77 - listen_content_length))
-    local listen_color=$([[ "$listen_address" == "Not configured" ]] && echo "$GRAY" || echo "$YELLOW")
-    printf "${CYAN}│${NC} Listen on:    ${listen_color}%s${NC}%*s${CYAN}│${NC}\n" "$listen_address" $listen_padding ""
-    
-    # Active connections
-    if systemctl is-active --quiet $DANTED_SERVICE 2>/dev/null && [[ -f "$DANTED_CONFIG" ]]; then
-        local config_port=$(grep "internal:" "$DANTED_CONFIG" | awk -F'=' '{print $2}' | tr -d ' ' 2>/dev/null)
-        local connections=$(netstat -tn 2>/dev/null | grep ":$config_port " | wc -l 2>/dev/null || echo "0")
-        local conn_display="${connections} active"
-        local conn_color=$BLUE
-    else
-        local conn_display="N/A"
-        local conn_color=$GRAY
-    fi
-    local conn_display_stripped=$(strip_color "$conn_display")
-    local conn_content_length=$((14 + ${#conn_display_stripped}))  # " Connections:  " + display
-    local conn_padding=$((77 - conn_content_length))
-    printf "${CYAN}│${NC} Connections:  ${conn_color}%s${NC}%*s${CYAN}│${NC}\n" "$conn_display" $conn_padding ""
+       # Service status line (dùng định dạng cột cố định)
+    local box_width=77
+    local label_width=13
+
+    # Service
+    local label_service="Service:"
+    local value_service="${color}${service_display}${NC}"
+    local value_service_stripped=$(strip_color "$service_display")
+    local value_service_len=${#value_service_stripped}
+    local padding_service=$((box_width - label_width - value_service_len))
+    printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_service" "$value_service" $padding_service ""
+
+    # Auto-start
+    local label_autostart="Auto-start:"
+    local value_autostart="${autostart_color}${autostart_display}${NC}"
+    local value_autostart_stripped=$(strip_color "$autostart_display")
+    local value_autostart_len=${#value_autostart_stripped}
+    local padding_autostart=$((box_width - label_width - value_autostart_len))
+    printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_autostart" "$value_autostart" $padding_autostart ""
+
+    # Listen on
+    local label_listen="Listen on:"
+    local value_listen="${listen_color}${listen_address}${NC}"
+    local value_listen_stripped=$(strip_color "$listen_address")
+    local value_listen_len=${#value_listen_stripped}
+    local padding_listen=$((box_width - label_width - value_listen_len))
+    printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_listen" "$value_listen" $padding_listen ""
+
+    # Connections
+    local label_conn="Connections:"
+    local value_conn="${conn_color}${conn_display}${NC}"
+    local value_conn_stripped=$(strip_color "$conn_display")
+    local value_conn_len=${#value_conn_stripped}
+    local padding_conn=$((box_width - label_width - value_conn_len))
+    printf "${CYAN}│${NC} %-13s%s%*s${CYAN}│${NC}\n" "$label_conn" "$value_conn" $padding_conn ""
     
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
