@@ -324,7 +324,7 @@ show_system_info() {
     print_info_line "Auto-start Status" "$auto_start_status" "$autostart_color"
 
     print_info_line "Listen Address" "$listen_address"    "${GREEN}"
-    print_info_line "Listen Port" "$listen_port"    "${GREEN}"
+    print_info_line "Listen Port" "$listen_port"    "${YELLOW}"
     print_info_line "Active Connections" "$active_connections" "${GREEN}"
 
     # Footer
@@ -477,7 +477,7 @@ change_port() {
     fi
     
     echo -e "${CYAN}┌─ Current Configuration ──────────────────────────────────────────────────────┐${NC}"
-    printf "${CYAN}${NC} Current Port: ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$current_port" 60 ""
+    printf "${CYAN}${NC} Current Port: ${YELLOW}%s${NC}%*s${CYAN}${NC}\n" "$current_port" 60 ""
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
     
@@ -604,6 +604,7 @@ test_bandwidth() {
     
     # Test direct connection
     print_color $YELLOW "Testing direct internet connection..."
+    print_color $YELLOW "This may take a while... Please wait..."
     echo
     
     local speeds=()
