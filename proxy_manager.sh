@@ -73,6 +73,11 @@ print_info_box() {
     echo
 }
 
+# Hàm loại bỏ escape code màu để tính độ dài thực
+strip_color() {
+    echo -e "$1" | sed 's/\x1B\[[0-9;]*[JKmsu]//g'
+}
+
 # Function to print success message
 print_success() {
     local message=$1
@@ -276,7 +281,8 @@ check_service_status() {
     
     # Service status line
     local service_display="${status_icon} ${status}"
-    local service_content_length=$((14 + ${#service_display}))  # " Service:      " + display
+    local service_display_stripped=$(strip_color "$service_display")
+    local service_content_length=$((14 + ${#service_display_stripped}))  # " Service:      " + display
     local service_padding=$((77 - service_content_length))
     printf "${CYAN}│${NC} Service:      ${color}%s${NC}%*s${CYAN}│${NC}\n" "$service_display" $service_padding ""
     
@@ -288,7 +294,8 @@ check_service_status() {
         local autostart_display="● DISABLED"
         local autostart_color=$RED
     fi
-    local autostart_content_length=$((14 + ${#autostart_display}))  # " Auto-start:   " + display
+    local autostart_display_stripped=$(strip_color "$autostart_display")
+    local autostart_content_length=$((14 + ${#autostart_display_stripped}))  # " Auto-start:   " + display
     local autostart_padding=$((77 - autostart_content_length))
     printf "${CYAN}│${NC} Auto-start:   ${autostart_color}%s${NC}%*s${CYAN}│${NC}\n" "$autostart_display" $autostart_padding ""
     
@@ -305,7 +312,8 @@ check_service_status() {
     else
         local listen_address="Not configured"
     fi
-    local listen_content_length=$((14 + ${#listen_address}))  # " Listen on:    " + display
+    local listen_address_stripped=$(strip_color "$listen_address")
+    local listen_content_length=$((14 + ${#listen_address_stripped}))  # " Listen on:    " + display
     local listen_padding=$((77 - listen_content_length))
     local listen_color=$([[ "$listen_address" == "Not configured" ]] && echo "$GRAY" || echo "$YELLOW")
     printf "${CYAN}│${NC} Listen on:    ${listen_color}%s${NC}%*s${CYAN}│${NC}\n" "$listen_address" $listen_padding ""
@@ -320,7 +328,8 @@ check_service_status() {
         local conn_display="N/A"
         local conn_color=$GRAY
     fi
-    local conn_content_length=$((14 + ${#conn_display}))  # " Connections:  " + display
+    local conn_display_stripped=$(strip_color "$conn_display")
+    local conn_content_length=$((14 + ${#conn_display_stripped}))  # " Connections:  " + display
     local conn_padding=$((77 - conn_content_length))
     printf "${CYAN}│${NC} Connections:  ${conn_color}%s${NC}%*s${CYAN}│${NC}\n" "$conn_display" $conn_padding ""
     
