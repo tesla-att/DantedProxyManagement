@@ -201,7 +201,7 @@ get_network_interfaces() {
 
 # Function to display system information with Dante status
 show_system_info() {
-    # Collect system information (assumed to be available)
+    # Thu thập thông tin hệ thống (giả sử đã có sẵn)
     cpu_usage=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}' | cut -d. -f1)
     memory_info=$(free -h | grep '^Mem:')
     memory_used=$(echo $memory_info | awk '{print $3}')
@@ -209,13 +209,13 @@ show_system_info() {
     disk_usage=$(df -h / | awk 'NR==2 {print $5}')
     uptime_info=$(uptime -p | sed 's/up //')
     
-    # Add variables to collect Dante information
+    # Thêm các biến để thu thập thông tin Dante
     dante_status="Unknown"
     auto_start_status="Unknown"
     listen_address="Unknown"
     active_connections="0"
 
-    # Check Dante service status
+    # Kiểm tra trạng thái Dante service
     if systemctl is-active --quiet danted 2>/dev/null; then
         dante_status="Running"
     elif systemctl is-failed --quiet danted 2>/dev/null; then
@@ -224,21 +224,21 @@ show_system_info() {
         dante_status="Stopped"
     fi
 
-    # Check auto-start status
+    # Kiểm tra auto-start status
     if systemctl is-enabled --quiet danted 2>/dev/null; then
         auto_start_status="Enabled"
     else
         auto_start_status="Disabled"
     fi
 
-    # Get listen address from config file or netstat
+    # Lấy listen address từ config file hoặc netstat
     if [ -f /etc/danted.conf ]; then
         listen_address=$(grep -E "^[[:space:]]*internal:" /etc/danted.conf | head -1 | awk '{print $2}' | sed 's/port=//')
         if [ -z "$listen_address" ]; then
             listen_address="Not configured"
         fi
     else
-        # Fallback: check from netstat
+        # Fallback: kiểm tra từ netstat
         listen_port=$(netstat -tlnp 2>/dev/null | grep danted | head -1 | awk '{print $4}' | cut -d: -f2)
         if [ -z "$listen_port" ]; then
             listen_address="Not found"
@@ -247,20 +247,36 @@ show_system_info() {
         fi
     fi
 
-    # Count active connections
+    # Đếm số kết nối active - simplified
+    active_connections="0"
     if command -v ss >/dev/null 2>&1; then
-        active_connections=$(ss -tn 2>/dev/null | grep -c ":1080\|:8080\|:3128" || echo "0")
+        conn_count=$(ss -tn 2>/dev/null | grep -E ":1080|:8080|:3128" | wc -l)
+        active_connections="$conn_count"
     elif command -v netstat >/dev/null 2>&1; then
-        active_connections=$(netstat -tn 2>/dev/null | grep -c ":1080\|:8080\|:3128" || echo "0")
+        conn_count=$(netstat -tn 2>/dev/null | grep -E ":1080|:8080|:3128" | wc -l)
+        active_connections="$conn_count"
     fi
 
-    # Function to print formatted line
+    # Function to print formatted line with exact width control
     print_info_line() {
         local label="$1"
         local value="$2"
         local color="$3"
-        local content_length=$((${#label} + ${#value} + 3)) # label + ": " + value
-        local padding=$((78 - content_length))
+        
+        # Calculate exact content length
+        local label_len=${#label}
+        local value_len=${#value}
+        local content_len=$((label_len + value_len + 3)) # ": " adds 2, space adds 1
+        
+        # Total box width is 79 characters (including borders)
+        # Content area is 77 characters
+        local padding=$((77 - content_len))
+        
+        # Ensure padding is not negative
+        if [ $padding -lt 0 ]; then
+            padding=0
+        fi
+        
         printf "${CYAN}│${NC} %s: ${color}%s${NC}%*s${CYAN}│${NC}\n" "$label" "$value" $padding ""
     }
 
@@ -302,7 +318,6 @@ show_system_info() {
     # Footer
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
 }
-
 
 # Function to check service status
 check_service_status() {
