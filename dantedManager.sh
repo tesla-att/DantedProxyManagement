@@ -213,6 +213,7 @@ show_system_info() {
     dante_status="Unknown"
     auto_start_status="Unknown"
     listen_address="Unknown"
+    listen_port="Unknown"
     active_connections="0"
 
     # Check Dante service status
@@ -231,19 +232,28 @@ show_system_info() {
         auto_start_status="Disabled"
     fi
 
-    # Get listen address from config file or netstat
+    # Get listen address and port from config file or netstat
     if [ -f /etc/danted.conf ]; then
-        listen_address=$(grep -E "^[[:space:]]*internal:" /etc/danted.conf | head -1 | awk '{print $2}' | sed 's/port=//')
-        if [ -z "$listen_address" ]; then
+        internal_line=$(grep -E "^[[:space:]]*internal:" /etc/danted.conf | head -1)
+        if [ -n "$internal_line" ]; then
+            listen_address=$(echo "$internal_line" | awk '{print $2}' | sed 's/port=.*//')
+            listen_port=$(echo "$internal_line" | awk '{print $2}' | sed 's/.*port=//')
+            if [ -z "$listen_address" ]; then
+                listen_address="Not configured"
+                listen_port="Not configured"
+            fi
+        else
             listen_address="Not configured"
+            listen_port="Not configured"
         fi
     else
         # Fallback: check from netstat
         listen_port=$(netstat -tlnp 2>/dev/null | grep danted | head -1 | awk '{print $4}' | cut -d: -f2)
         if [ -z "$listen_port" ]; then
             listen_address="Not found"
+            listen_port="Not found"
         else
-            listen_address="0.0.0.0:$listen_port"
+            listen_address="0.0.0.0"
         fi
     fi
 
@@ -313,6 +323,7 @@ show_system_info() {
     print_info_line "Auto-start Status" "$auto_start_status" "$autostart_color"
 
     print_info_line "Listen Address" "$listen_address"    "${GREEN}"
+    print_info_line "Listen Port" "$listen_port"    "${GREEN}"
     print_info_line "Active Connections" "$active_connections" "${GREEN}"
 
     # Footer
@@ -373,7 +384,8 @@ check_service_status() {
         "2. Stop Service"           
         "3. View Full Logs"
         "4. Test Internet Bandwidth"
-        "5. Back to Main Menu"
+        "5. Change Port"
+        "6. Back to Main Menu"
     )
 
     for item in "${control_items[@]}"; do
@@ -386,7 +398,7 @@ check_service_status() {
     echo
     
     while true; do
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-5]: ")" choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-6]: ")" choice
         
         case $choice in
             1)
@@ -425,6 +437,11 @@ check_service_status() {
                 return
                 ;;
             5)
+                change_port
+                check_service_status
+                return
+                ;;
+            6)
                 break
                 ;;
             *)
@@ -432,6 +449,112 @@ check_service_status() {
                 ;;
         esac
     done
+}
+
+# Function to change port
+change_port() {
+    print_header
+    print_section_header "Change Danted Port"
+    
+    # Check if Danted is installed
+    if [ ! -f "$DANTED_CONFIG" ]; then
+        print_error "Danted is not installed or configured!"
+        print_warning "Please install Danted first."
+        echo
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Get current port
+    local current_port=""
+    if [ -f "$DANTED_CONFIG" ]; then
+        current_port=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | awk '{print $2}' | sed 's/.*port=//')
+    fi
+    
+    if [ -z "$current_port" ]; then
+        current_port="Not configured"
+    fi
+    
+    echo -e "${CYAN}┌─ Current Configuration ─────────────────────────────────────────────────────┐${NC}"
+    printf "${CYAN}│${NC} Current Port: ${GREEN}%s${NC}%*s${CYAN}│${NC}\n" "$current_port" 60 ""
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo
+    
+    # Get new port
+    while true; do
+        read -p "$(echo -e "${YELLOW}❯${NC} Enter new port (1-65535): ")" new_port
+        
+        if [[ "$new_port" =~ ^[0-9]+$ ]] && [[ $new_port -ge 1 ]] && [[ $new_port -le 65535 ]]; then
+            # Check if port is already in use
+            if netstat -tuln 2>/dev/null | grep -q ":$new_port "; then
+                print_error "Port $new_port is already in use!"
+                read -p "$(echo -e "${YELLOW}❯${NC} Do you want to continue anyway? (Y/N): ")" continue_anyway
+                if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+                    continue
+                fi
+            fi
+            break
+        else
+            print_error "Invalid port number. Please enter a number between 1-65535."
+        fi
+    done
+    
+    echo
+    print_warning "This will restart the Danted service."
+    read -p "$(echo -e "${YELLOW}❯${NC} Continue? (Y/N): ")" confirm
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        print_warning "Operation cancelled."
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    echo
+    print_color $YELLOW "Changing port to $new_port..."
+    
+    # Backup current config
+    cp "$DANTED_CONFIG" "${DANTED_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)"
+    
+    # Get current IP address
+    local current_ip=""
+    if [ -f "$DANTED_CONFIG" ]; then
+        current_ip=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | awk '{print $2}' | sed 's/port=.*//')
+    fi
+    
+    if [ -z "$current_ip" ]; then
+        current_ip="0.0.0.0"
+    fi
+    
+    # Update config file
+    sed -i "s/^[[:space:]]*internal:.*/internal: $current_ip port = $new_port/" "$DANTED_CONFIG"
+    
+    if [ $? -eq 0 ]; then
+        print_success "Configuration updated successfully!"
+        
+        # Restart service
+        print_color $YELLOW "Restarting Danted service..."
+        if systemctl restart $DANTED_SERVICE; then
+            sleep 2
+            if systemctl is-active --quiet $DANTED_SERVICE; then
+                print_success "Service restarted successfully!"
+                print_success "New port: $new_port"
+            else
+                print_error "Service failed to start with new port!"
+                print_warning "Restoring previous configuration..."
+                cp "${DANTED_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)" "$DANTED_CONFIG"
+                systemctl restart $DANTED_SERVICE
+            fi
+        else
+            print_error "Failed to restart service!"
+            print_warning "Restoring previous configuration..."
+            cp "${DANTED_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)" "$DANTED_CONFIG"
+        fi
+    else
+        print_error "Failed to update configuration!"
+    fi
+    
+    echo
+    read -p "Press Enter to continue..."
 }
 
 # Function to test bandwidth
