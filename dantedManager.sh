@@ -1492,113 +1492,113 @@ delete_users() {
 
 # Function to test proxies
 #test_proxies() {
-    clear
-    print_header
-    print_section_header "Test Proxies"
+#    clear
+#    print_header
+#    print_section_header "Test Proxies"
     
     # Show format example clearly
-    echo -e "${YELLOW}Format: ${WHITE}IP:PORT:USERNAME:PASSWORD${NC}"
-    echo -e "${GRAY}Example:${NC}"
-    echo -e "  ${CYAN}100.150.200.250:30500:user1:pass123${NC}"
-    echo -e "  ${CYAN}192.168.1.100:1080:alice:secret456${NC}"
-    echo -e "${GRAY}Enter one proxy per line, Press Enter twice to finish.${NC}"
-    echo
+#    echo -e "${YELLOW}Format: ${WHITE}IP:PORT:USERNAME:PASSWORD${NC}"
+#    echo -e "${GRAY}Example:${NC}"
+#    echo -e "  ${CYAN}100.150.200.250:30500:user1:pass123${NC}"
+#    echo -e "  ${CYAN}192.168.1.100:1080:alice:secret456${NC}"
+#    echo -e "${GRAY}Enter one proxy per line, Press Enter twice to finish.${NC}"
+#    echo
     
     # Read proxy list using multiline input
-    local proxies_input
+#    local proxies_input
     # Redirect stderr to display feedback, capture only stdout (pure data)
-    exec 3>&1 4>&2
-    proxies_input=$(read_multiline_input "Enter proxy list:" 2>&4)
-    exec 3>&- 4>&-
+#    exec 3>&1 4>&2
+#    proxies_input=$(read_multiline_input "Enter proxy list:" 2>&4)
+#    exec 3>&- 4>&-
     
-    if [[ -z "$proxies_input" ]]; then
-        print_error "No proxies provided!"
-        read -p "Press Enter to continue..."
-        return
-    fi
+#    if [[ -z "$proxies_input" ]]; then
+#        print_error "No proxies provided!"
+#        read -p "Press Enter to continue..."
+#        return
+#    fi
     
-    echo
+#    echo
     
     # Parse proxies with silent validation (no error messages)
-    local proxies=()
-    local line_num=0
-    local valid_count=0
-    local invalid_count=0
+#    local proxies=()
+#   local line_num=0
+#    local valid_count=0
+#    local invalid_count=0
     
     # Process each line from input
-    while IFS= read -r proxy_line; do
-        ((line_num++))
+#    while IFS= read -r proxy_line; do
+#        ((line_num++))
         
         # Skip empty lines
-        if [[ -z "$proxy_line" ]]; then
-            continue
-        fi
+#        if [[ -z "$proxy_line" ]]; then
+#            continue
+#        fi
         
         # Trim whitespace
-        proxy_line=$(echo "$proxy_line" | xargs)
+#        proxy_line=$(echo "$proxy_line" | xargs)
         
         # Skip if still empty after trim
-        if [[ -z "$proxy_line" ]]; then
-            continue
-        fi
+#        if [[ -z "$proxy_line" ]]; then
+#            continue
+#        fi
         
         # Simple validation: count colons and check basic format
-        local colon_count=$(echo "$proxy_line" | tr -cd ':' | wc -c)
+#        local colon_count=$(echo "$proxy_line" | tr -cd ':' | wc -c)
         
-        if [[ $colon_count -eq 3 ]]; then
+#        if [[ $colon_count -eq 3 ]]; then
             # Split and validate components
-            IFS=':' read -r ip port user pass <<< "$proxy_line"
+#            IFS=':' read -r ip port user pass <<< "$proxy_line"
             
             # Check if all components exist and port is numeric
-            if [[ -n "$ip" && -n "$port" && -n "$user" && -n "$pass" ]]; then
-                if [[ "$port" =~ ^[0-9]+$ ]] && [[ $port -ge 1 ]] && [[ $port -le 65535 ]]; then
+#            if [[ -n "$ip" && -n "$port" && -n "$user" && -n "$pass" ]]; then
+#                if [[ "$port" =~ ^[0-9]+$ ]] && [[ $port -ge 1 ]] && [[ $port -le 65535 ]]; then
                     # Check for duplicates in proxies array
-                    local is_duplicate=false
-                    for existing_proxy in "${proxies[@]}"; do
-                        if [[ "$existing_proxy" == "$proxy_line" ]]; then
-                            is_duplicate=true
-                            break
-                        fi
-                    done
+#                    local is_duplicate=false
+#                    for existing_proxy in "${proxies[@]}"; do
+#                        if [[ "$existing_proxy" == "$proxy_line" ]]; then
+#                            is_duplicate=true
+#                            break
+#                        fi
+#                    done
                     
-                    if [[ "$is_duplicate" == false ]]; then
-                        proxies+=("$proxy_line")
-                        ((valid_count++))
-                        print_color $GREEN "  ✓ Valid: $proxy_line"
-                    fi
-                else
-                    ((invalid_count++))
-                fi
-            else
-                ((invalid_count++))
-            fi
-        else
-            ((invalid_count++))
-        fi
+#                    if [[ "$is_duplicate" == false ]]; then
+#                        proxies+=("$proxy_line")
+#                        ((valid_count++))
+#                        print_color $GREEN "  ✓ Valid: $proxy_line"
+#                    fi
+#                else
+#                    ((invalid_count++))
+#                fi
+#            else
+#                ((invalid_count++))
+#            fi
+#        else
+#            ((invalid_count++))
+#        fi
         
-    done <<< "$proxies_input"
+#    done <<< "$proxies_input"
     
     # Show summary instead of detailed errors
-    if [[ $invalid_count -gt 0 ]]; then
-        print_warning "Skipped $invalid_count invalid proxy entries"
-    fi
+#    if [[ $invalid_count -gt 0 ]]; then
+#        print_warning "Skipped $invalid_count invalid proxy entries"
+#    fi
     
-    if [[ ${#proxies[@]} -eq 0 ]]; then
-        print_error "No valid proxies provided!"
-        if [[ $invalid_count -gt 0 ]]; then
-            echo -e "${GRAY}Check proxy format: IP:PORT:USERNAME:PASSWORD${NC}"
-        fi
-        read -p "Press Enter to continue..."
-        return
-    fi
+#    if [[ ${#proxies[@]} -eq 0 ]]; then
+#        print_error "No valid proxies provided!"
+#        if [[ $invalid_count -gt 0 ]]; then
+#            echo -e "${GRAY}Check proxy format: IP:PORT:USERNAME:PASSWORD${NC}"
+#        fi
+#        read -p "Press Enter to continue..."
+#        return
+#    fi
     
-    echo
-    print_color $CYAN "Testing ${#proxies[@]} proxies..."
-    print_color $CYAN "Please wait..."   
-    echo
+#    echo
+#    print_color $CYAN "Testing ${#proxies[@]} proxies..."
+#    print_color $CYAN "Please wait..."   
+#    echo
     
-    local success_count=0
-    local total_count=${#proxies[@]}
+#    local success_count=0
+#    local total_count=${#proxies[@]}
     
 # Proxy test results with proper box formatting
 #    echo -e "${CYAN}┌─ Proxy Test Results ─────────────────────────────────────────────────────────┐${NC}"
