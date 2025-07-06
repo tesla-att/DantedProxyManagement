@@ -570,6 +570,13 @@ test_bandwidth() {
         "http://speedtest.ftp.otenet.gr/files/test10Mb.db"
         "http://ipv4.download.thinkbroadband.com/10MB.zip"
         "http://speedtest.tele2.net/1MB.zip"
+        "http://speedtest-sgp1.digitalocean.com/10mb.test"
+        "http://speedtest-nyc1.digitalocean.com/10mb.test"
+        "http://speedtest-sfo1.digitalocean.com/10mb.test"
+        "http://speedtest.ams01.softlayer.com/downloads/test10.zip"
+        "http://speedtest.tokyo.linode.com/100MB-tokyo.bin"
+        "http://speedtest.london.linode.com/100MB-london.bin"
+        "http://speedtest.dal05.softlayer.com/downloads/test10.zip"
     )
     
     # Function to format speed
