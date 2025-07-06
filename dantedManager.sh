@@ -1742,21 +1742,21 @@ uninstall_danted() {
         fi
     done < <(getent passwd | grep '/bin/false' | cut -d: -f1)
     
-    if [[ ${#socks_users[@]} -gt 0 ]]; then
-        echo
-        print_warning "Found ${#socks_users[@]} SOCKS5 users:"
-        for user in "${socks_users[@]}"; do
-            echo -e "  ${YELLOW}•${NC} $user"
-        done
-        echo
-        read -p "$(echo -e "${YELLOW}❯${NC} Do you want to remove all SOCKS5 users? (Y/N): ")" remove_users
-        if [[ "$remove_users" =~ ^[Yy]$ ]]; then
-            for user in "${socks_users[@]}"; do
-                userdel "$user" 2>/dev/null
-                print_success "Removed user: $user"
-            done
-        fi
-    fi
+    #if [[ ${#socks_users[@]} -gt 0 ]]; then
+    #    echo
+    #    print_warning "Found ${#socks_users[@]} SOCKS5 users:"
+    #    for user in "${socks_users[@]}"; do
+    #        echo -e "  ${YELLOW}•${NC} $user"
+    #    done
+    #    echo
+    #    read -p "$(echo -e "${YELLOW}❯${NC} Do you want to remove all SOCKS5 users? (Y/N): ")" remove_users
+    #    if [[ "$remove_users" =~ ^[Yy]$ ]]; then
+    #        for user in "${socks_users[@]}"; do
+    #            userdel "$user" 2>/dev/null
+    #            print_success "Removed user: $user"
+    #        done
+    #    fi
+    #fi
     
     echo
     print_success "Danted has been completely uninstalled!"
