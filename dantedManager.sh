@@ -1832,10 +1832,10 @@ main() {
             2) show_users ;;
             3) add_multi_users ;;
             4) delete_users ;;
-            5) test_proxies ;;
-            6) check_service_status ;;
-            7) uninstall_danted ;;
-            8) 
+            #5) test_proxies ;;
+            5) check_service_status ;;
+            6) uninstall_danted ;;
+            7) 
                 # Clear screen and show thank you message
                 clear
                 print_header
@@ -1844,7 +1844,7 @@ main() {
                 exit 0
                 ;;
             *) 
-                print_error "Invalid option! Please select 1-8."
+                print_error "Invalid option! Please select 1-7."
                 sleep 1
                 ;;
         esac
