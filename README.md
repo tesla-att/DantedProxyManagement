@@ -473,6 +473,10 @@ sudo danted -f /etc/danted.conf -d
 # Only allow SOCKS5 port
 sudo ufw allow [SOCKS5_PORT]/tcp
 
+# Allow port for SSH 
+# Default port is 22
+sudo ufw allow 22 
+
 # Block all other ports (optional)
 sudo ufw default deny incoming
 sudo ufw default allow outgoing

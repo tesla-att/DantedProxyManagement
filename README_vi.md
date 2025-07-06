@@ -473,6 +473,10 @@ sudo danted -f /etc/danted.conf -d
 # Chỉ cho phép port SOCKS5
 sudo ufw allow [SOCKS5_PORT]/tcp
 
+# Allow port để SSH (Nếu cần SSH vào VPS)
+# Mặc định là port 22, có thể thay đổi port tuỳ chọn
+sudo ufw allow 22 
+
 # Chặn tất cả port khác (tùy chọn)
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
