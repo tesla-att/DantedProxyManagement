@@ -850,20 +850,50 @@ install_danted() {
     echo
     print_info_box "Dang cai dat May chu SOCKS5 Proxy Danted. Vui long doi..."
     
+    # Ham hien thi progress bar
+    show_progress() {
+        local current_step=$1
+        local total_steps=$2
+        local step_name=$3
+        local percentage=$((current_step * 100 / total_steps))
+        local bar_length=50
+        local filled_length=$((percentage * bar_length / 100))
+        local empty_length=$((bar_length - filled_length))
+        
+        # Tao progress bar
+        local bar=""
+        for ((i=0; i<filled_length; i++)); do
+            bar+="█"
+        done
+        for ((i=0; i<empty_length; i++)); do
+            bar+="░"
+        done
+        
+        # Hien thi progress bar voi mau sac
+        printf "\r${CYAN}[${NC}%3d%%${CYAN}] ${NC}%s ${CYAN}[${NC}%s${CYAN}]${NC}" \
+            "$percentage" "$step_name" "$bar"
+        
+        # Xuong dong neu hoan thanh
+        if [[ $current_step -eq $total_steps ]]; then
+            echo
+        fi
+    }
+    
     # Cap nhat danh sach goi
-    echo -e "${GRAY}Dang cap nhat danh sach goi...${NC}"
-    apt update -qq
+    show_progress 1 6 "Cap nhat danh sach goi..."
+    apt update -qq >/dev/null 2>&1
     
     # Cai dat Danted
-    echo -e "${GRAY}Dang cai dat dante-server...${NC}"
+    show_progress 2 6 "Cai dat dante-server..."
     if ! apt install -y dante-server >/dev/null 2>&1; then
+        echo
         print_error "Khong the cai dat Danted!"
         read -p "Nhan Enter de tiep tuc..."
         return
     fi
     
     # Tao cau hinh Danted
-    echo -e "${GRAY}Dang tao cau hinh...${NC}"
+    show_progress 3 6 "Tao file cau hinh..."
     cat > "$DANTED_CONFIG" << 'EOF'
 # Cau hinh SOCKS5 Proxy Danted
 logoutput: /var/log/danted.log
@@ -888,16 +918,19 @@ socks pass {
 EOF
     
     # Thay the cac bien gia
+    show_progress 4 6 "Cap nhat cau hinh..."
     sed -i "s/SELECTED_IP_PLACEHOLDER/$SELECTED_IP/g" "$DANTED_CONFIG"
     sed -i "s/SELECTED_PORT_PLACEHOLDER/$SELECTED_PORT/g" "$DANTED_CONFIG"
     
     # Bat va khoi dong dich vu
-    echo -e "${GRAY}Dang khoi dong dich vu...${NC}"
+    show_progress 5 6 "Khoi dong dich vu..."
     systemctl enable $DANTED_SERVICE >/dev/null 2>&1
     systemctl restart $DANTED_SERVICE
     
     # Kiem tra trang thai
+    show_progress 6 6 "Kiem tra trang thai..."
     sleep 2
+    
     echo
     if systemctl is-active --quiet $DANTED_SERVICE; then
         print_success "Danted da cai dat va khoi dong thanh Port!"
