@@ -384,7 +384,7 @@ check_service_status() {
         "1. Restart Service"
         "2. Stop Service"           
         "3. Change Port"
-        "4. Test Internet Bandwidth"
+        "4. Test Internet Bandwidth (beta)"
         "5. Full Service Logs"
         "6. Back to Main Menu"
     )
@@ -1489,8 +1489,9 @@ delete_users() {
     read -p "Press Enter to continue..."
 }
 
+
 # Function to test proxies
-test_proxies() {
+#test_proxies() {
     clear
     print_header
     print_section_header "Test Proxies"
@@ -1600,89 +1601,89 @@ test_proxies() {
     local total_count=${#proxies[@]}
     
 # Proxy test results with proper box formatting
-    echo -e "${CYAN}┌─ Proxy Test Results ─────────────────────────────────────────────────────────┐${NC}"
+#    echo -e "${CYAN}┌─ Proxy Test Results ─────────────────────────────────────────────────────────┐${NC}"
 
-    for i in "${!proxies[@]}"; do
-        local proxy="${proxies[i]}"
+#    for i in "${!proxies[@]}"; do
+#        local proxy="${proxies[i]}"
         
         # Parse proxy components
-        IFS=':' read -r ip port user pass <<< "$proxy"
+#        IFS=':' read -r ip port user pass <<< "$proxy"
         
-        local curl_proxy="socks5://$user:$pass@$ip:$port"
+#        local curl_proxy="socks5://$user:$pass@$ip:$port"
         
         # Test with timeout
-        local display_proxy="${ip}:${port}@${user}"
-        if [[ ${#display_proxy} -gt 30 ]]; then
-            display_proxy="${display_proxy:0:27}..."
-        fi
+#        local display_proxy="${ip}:${port}@${user}"
+#        if [[ ${#display_proxy} -gt 30 ]]; then
+#            display_proxy="${display_proxy:0:27}..."
+#        fi
         
         # Create progress indicator
-        local progress_indicator=$(printf "[%2d/%2d]" $((i+1)) $total_count)
+#        local progress_indicator=$(printf "[%2d/%2d]" $((i+1)) $total_count)
         
         # Test proxy first
-        if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            local result_text="${GREEN}✓ SUCCESS${NC}"
-            ((success_count++))
-        else
-            local result_text="${RED}✗ FAILED${NC}"
-        fi
+#        if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
+#            local result_text="${GREEN}✓ SUCCESS${NC}"
+#            ((success_count++))
+#        else
+#            local result_text="${RED}✗ FAILED${NC}"
+#        fi
         
         # Calculate padding based on actual text length (không tính mã màu)
-        local progress_len=${#progress_indicator}
-        local proxy_len=${#display_proxy}
+#        local progress_len=${#progress_indicator}
+#        local proxy_len=${#display_proxy}
         # Độ dài thực tế của result_text không tính mã màu
-        local result_len=8  # "✓ SUCCESS" hoặc "✗ FAILED" đều 8 ký tự
+#        local result_len=8  # "✓ SUCCESS" hoặc "✗ FAILED" đều 8 ký tự
         
         # Total content: " " + progress + " " + proxy + " " + result + " "
-        local total_content_len=$((1 + progress_len + 1 + proxy_len + 1 + result_len + 1))
-        local padding=$((78 - total_content_len))
+#        local total_content_len=$((1 + progress_len + 1 + proxy_len + 1 + result_len + 1))
+#        local padding=$((78 - total_content_len))
         
         # Print the formatted line
-        printf "${CYAN}${NC} %s %-30s %b%*s${CYAN}${NC}\n" \
-            "$progress_indicator" "$display_proxy" "$result_text" $padding ""
+#        printf "${CYAN}${NC} %s %-30s %b%*s${CYAN}${NC}\n" \
+#            "$progress_indicator" "$display_proxy" "$result_text" $padding ""
         
-    done
+#    done
 
-    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+#    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     
-    local success_rate=0
-    if [[ $total_count -gt 0 ]]; then
-        success_rate=$((success_count * 100 / total_count))
-    fi
+#    local success_rate=0
+#    if [[ $total_count -gt 0 ]]; then
+#        success_rate=$((success_count * 100 / total_count))
+#    fi
     
-    echo
-    echo -e "${CYAN}┌─ Test Summary ───────────────────────────────────────────────────────────────┐${NC}"
+#    echo
+#    echo -e "${CYAN}┌─ Test Summary ───────────────────────────────────────────────────────────────┐${NC}"
 
     # Total Proxies
-    local total_text="Total Proxies: $total_count"
-    local total_length=$((${#total_text} + 1))
-    local total_padding=$((78 - total_length))
-    printf "${CYAN}${NC} Total Proxies:   ${WHITE}%s${NC}%*s${CYAN}${NC}\n" "$total_count" $total_padding ""
+#    local total_text="Total Proxies: $total_count"
+#    local total_length=$((${#total_text} + 1))
+#    local total_padding=$((78 - total_length))
+#    printf "${CYAN}${NC} Total Proxies:   ${WHITE}%s${NC}%*s${CYAN}${NC}\n" "$total_count" $total_padding ""
 
     # Successful
-    local success_text="Successful: $success_count"
-    local success_length=$((${#success_text} + 1))
-    local success_padding=$((78 - success_length))
-    printf "${CYAN}${NC} Successful:      ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$success_count" $success_padding ""
+#    local success_text="Successful: $success_count"
+#    local success_length=$((${#success_text} + 1))
+#    local success_padding=$((78 - success_length))
+#    printf "${CYAN}${NC} Successful:      ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$success_count" $success_padding ""
 
     # Failed
-    local failed_count=$((total_count - success_count))
-    local failed_text="Failed: $failed_count"
-    local failed_length=$((${#failed_text} + 1))
-    local failed_padding=$((78 - failed_length))
-    printf "${CYAN}${NC} Failed:          ${RED}%s${NC}%*s${CYAN}${NC}\n" "$failed_count" $failed_padding ""
+#    local failed_count=$((total_count - success_count))
+#    local failed_text="Failed: $failed_count"
+#    local failed_length=$((${#failed_text} + 1))
+#    local failed_padding=$((78 - failed_length))
+#    printf "${CYAN}${NC} Failed:          ${RED}%s${NC}%*s${CYAN}${NC}\n" "$failed_count" $failed_padding ""
 
     # Success Rate
-    local rate_text="Success Rate: ${success_rate}%"
-    local rate_length=$((${#rate_text} + 1))
-    local rate_padding=$((78 - rate_length))
-    printf "${CYAN}${NC} Success Rate:    ${YELLOW}%s%%${NC}%*s${CYAN}${NC}\n" "$success_rate" $rate_padding ""
+#    local rate_text="Success Rate: ${success_rate}%"
+#    local rate_length=$((${#rate_text} + 1))
+#    local rate_padding=$((78 - rate_length))
+#    printf "${CYAN}${NC} Success Rate:    ${YELLOW}%s%%${NC}%*s${CYAN}${NC}\n" "$success_rate" $rate_padding ""
 
-    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+#    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     
-    echo
-    read -p "Press Enter to continue..."
-}
+#    echo
+#    read -p "Press Enter to continue..."
+#}
 
 # Function to uninstall Danted
 uninstall_danted() {
@@ -1787,10 +1788,10 @@ show_main_menu() {
         "2. Show Users"
         "3. Add Users"
         "4. Delete Users"
-        "5. Test Proxies"
-        "6. Check Status & Monitoring"
-        "7. Uninstall Danted"
-        "8. Exit"
+        #"5. Test Proxies"
+        "5. Check Status & Monitoring"
+        "6. Uninstall Danted"
+        "7. Exit"
     )
     
     for item in "${menu_items[@]}"; do
@@ -1824,7 +1825,7 @@ main() {
     
     while true; do
         show_main_menu
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-8]: ")" choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-7]: ")" choice
         
         case $choice in
             1) install_danted ;;
