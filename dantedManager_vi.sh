@@ -43,7 +43,7 @@ print_color() {
 print_header() {
     clear
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${WHITE}${BOLD}                    QUAN LY DANTED SOCKS5 PROXY v1.0                         ${NC}${CYAN}║${NC}"
+    echo -e "${CYAN}║${WHITE}${BOLD}                        DANTED SOCKS5 PROXY MANAGER v1.0                      ${NC}${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo
 }
@@ -98,7 +98,7 @@ read_multiline_input() {
     local line_count=0
     
     print_color $YELLOW "$prompt"
-    echo -e "${GRAY}Nhap du lieu (Nhap 1 nguoi dung moi dong, nhan Enter 2 lan de ket thuc):${NC}"
+    echo -e "${GRAY}Nhap du lieu (Nhap 1 user moi dong, nhan Enter 2 lan de ket thuc):${NC}"
     
     local empty_count=0
     local seen_lines=()
@@ -156,7 +156,7 @@ get_network_interfaces() {
     
     # Tieu de voi chieu rong co dinh
     echo -e "${CYAN}┌─ Giao Dien Mang Co San ──────────────────────────────────────────────────────┐${NC}"
-    printf "${CYAN}│${NC} ${WHITE}STT${NC} ${WHITE}Ten Giao Dien        ${WHITE}Dia Chi IP${NC}%*s${CYAN}│${NC}\n" 42 ""
+    printf "${CYAN}│${NC} ${WHITE}STT${NC} ${WHITE}Interface Name       ${WHITE}Dia Chi IP${NC}%*s${CYAN}│${NC}\n" 42 ""
 
     # Lap qua cac giao dien mang va IP
     while IFS= read -r line; do
@@ -295,17 +295,17 @@ show_system_info() {
     echo -e "${CYAN}┌─ Thong Tin He Thong ─────────────────────────────────────────────────────────┐${NC}"
 
     # Thong tin he thong
-    print_info_line "Su Dung CPU" "${cpu_usage}%" "${GREEN}"
+    print_info_line "CPU Usage" "${cpu_usage}%" "${GREEN}"
     
     # Dinh dang bo nho
     memory_display="${memory_used} / ${memory_total}"
     if [[ ${#memory_display} -gt 25 ]]; then
         memory_display="${memory_used}/${memory_total}"
     fi
-    print_info_line "Bo Nho" "$memory_display" "${GREEN}"
+    print_info_line "Memory Usage" "$memory_display" "${GREEN}"
     
-    print_info_line "Su Dung Dia" "$disk_usage" "${GREEN}"
-    print_info_line "Thoi Gian Hoat Dong" "$uptime_info" "${GREEN}"
+    print_info_line "Disk Usage" "$disk_usage" "${GREEN}"
+    print_info_line "Uptime" "$uptime_info" "${GREEN}"
 
     # Duong phan cach
     echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${NC}"
@@ -315,17 +315,17 @@ show_system_info() {
     if [ "$dante_status" != "Dang chay" ]; then
         dante_color="${RED}"
     fi
-    print_info_line "Trang Thai Dante" "$dante_status" "$dante_color"
+    print_info_line "Dante Status" "$dante_status" "$dante_color"
 
     autostart_color="${GREEN}"
-    if [ "$auto_start_status" != "Da bat" ]; then
+    if [ "$auto_start_status" != "Enabled" ]; then
         autostart_color="${YELLOW}"
     fi
-    print_info_line "Tu Dong Khoi Dong" "$auto_start_status" "$autostart_color"
+    print_info_line "Auto Start" "$auto_start_status" "$autostart_color"
 
-    print_info_line "Dia Chi Nghe" "$listen_address"    "${GREEN}"
-    print_info_line "Cong Nghe" "$listen_port"    "${YELLOW}"
-    print_info_line "Ket Noi Hoat Dong" "$active_connections" "${GREEN}"
+    print_info_line "Listen Address" "$listen_address"    "${GREEN}"
+    print_info_line "Listen Port" "$listen_port"    "${YELLOW}"
+    print_info_line "Active Connections" "$active_connections" "${GREEN}"
 
     # Chan
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
@@ -640,7 +640,7 @@ test_bandwidth() {
     printf "${CYAN}${NC} Toc Do TB:       ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$(format_speed $avg_speed)" 60 ""
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     
-    # Hoi nguoi dung co muon kiem tra proxy khong
+    # Hoi user co muon kiem tra proxy khong
     echo
     read -p "$(echo -e "${YELLOW}❯${NC} Ban co muon kiem tra toc do proxy? (Y/N): ")" test_proxies
     
@@ -913,10 +913,10 @@ EOF
     read -p "Nhan Enter de tiep tuc..."
 }
 
-# Ham hien thi nguoi dung
+# Ham hien thi user
 show_users() {
     print_header
-    print_section_header "Nguoi Dung SOCKS5 Proxy"
+    print_section_header "user SOCKS5 Proxy"
 
     local users=()
     while IFS= read -r user; do
@@ -927,15 +927,15 @@ show_users() {
 
     if [[ ${#users[@]} -eq 0 ]]; then
         # Trang thai trong voi dinh dang hop dung
-        echo -e "${CYAN}┌─ Danh Sach Nguoi Dung (0 nguoi dung) ────────────────────────────────────────┐${NC}"
-        local warning_msg="Khong tim thay nguoi dung SOCKS5 nao."
+        echo -e "${CYAN}┌─ Danh Sach user (0 user) ────────────────────────────────────────┐${NC}"
+        local warning_msg="Khong tim thay user SOCKS5 nao."
         local warning_length=$((${#warning_msg} + 1))
         local warning_padding=$((78 - warning_length))
         printf "${CYAN}│${NC} ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$warning_msg" $warning_padding ""
         echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     else
-        # Tieu de voi so luong nguoi dung
-        local header_title="Danh Sach Nguoi Dung (${#users[@]} nguoi dung)"
+        # Tieu de voi so luong user
+        local header_title="Danh Sach user (${#users[@]} user)"
         local header_length=${#header_title}
         local header_padding=$((77 - header_length))  # 78 - 6 (cho "─ " va " ") = 69
 
@@ -943,7 +943,7 @@ show_users() {
         for ((i=0; i<$header_padding; i++)); do printf "─"; done
         printf "┐${NC}\n"
 
-        # Hien thi nguoi dung voi dinh dang dung
+        # Hien thi user voi dinh dang dung
         for i in "${!users[@]}"; do
             local user_number=$(printf "%3d." $((i+1)))
             local user_display="$user_number ${users[i]}"
@@ -960,7 +960,7 @@ show_users() {
     read -p "Nhan Enter de tiep tuc..."
 }
 
-# Ham tao file cau hinh cho nguoi dung
+# Ham tao file cau hinh cho user
 create_user_config() {
     local username=$1
     local password=$2
@@ -1206,27 +1206,27 @@ EOF
     if [[ $? -eq 0 ]]; then
         return 0
     else
-        print_error "Khong the tao file cau hinh cho nguoi dung: $username"
+        print_error "Khong the tao file cau hinh cho user: $username"
         return 1
     fi
 }
 
-# Ham them nhieu nguoi dung
+# Ham them nhieu user
 add_multi_users() {
     print_header
-    print_section_header "Them Nhieu Nguoi Dung"
+    print_section_header "Them Nhieu user"
 
-    echo -e "${GRAY}Nhap du lieu (Nhap 1 nguoi dung moi dong, nhan Enter 2 lan de ket thuc):${NC}"
-    # Doc ten nguoi dung su dung nhap nhieu dong
+    echo -e "${GRAY}Nhap du lieu (Nhap 1 user moi dong, nhan Enter 2 lan de ket thuc):${NC}"
+    # Doc ten user su dung nhap nhieu dong
     local usernames_input
-    usernames_input=$(read_multiline_input "Nhap ten nguoi dung (mot dong mot ten):")
+    usernames_input=$(read_multiline_input "Nhap ten user (mot dong mot ten):")
     if [[ -z "$usernames_input" ]]; then
-        print_error "Khong co ten nguoi dung nao duoc cung cap!"
+        print_error "Khong co ten user nao duoc cung cap!"
         read -p "Nhan Enter de tiep tuc..."
         return
     fi
     
-    # Phan tich ten nguoi dung - XAC THUC THAU LAM (KHONG CO THONG BAO LOI)
+    # Phan tich ten user - XAC THUC THAU LAM (KHONG CO THONG BAO LOI)
     local usernames=()
     local line_num=0
     while IFS= read -r username; do
@@ -1240,7 +1240,7 @@ add_multi_users() {
         if [[ -n "$username" ]]; then
             if [[ "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
                 if id "$username" &>/dev/null; then
-                    print_error "Nguoi dung '$username' da ton tai! Bo qua..."
+                    print_error "user '$username' da ton tai! Bo qua..."
                 else
                     usernames+=("$username")
                 fi
@@ -1249,19 +1249,19 @@ add_multi_users() {
     done <<< "$usernames_input"
     
     if [[ ${#usernames[@]} -eq 0 ]]; then
-        print_error "Khong co ten nguoi dung hop le nao duoc cung cap!"
+        print_error "Khong co ten user hop le nao duoc cung cap!"
         read -p "Nhan Enter de tiep tuc..."
         return
     fi
     
     echo
-    print_info_box "Dang tao ${#usernames[@]} nguoi dung..."
+    print_info_box "Dang tao ${#usernames[@]} user..."
     echo
     
-    # Tao nguoi dung va dat mat khau
+    # Tao user va dat mat khau
     local created_users=()
     for username in "${usernames[@]}"; do
-        echo -e "${CYAN}Dang thiet lap nguoi dung: ${WHITE}$username${NC}"
+        echo -e "${CYAN}Dang thiet lap user: ${WHITE}$username${NC}"
         
         while true; do
             read -s -p "$(echo -e "${YELLOW}❯${NC} Dat mat khau cho '$username': ")" password
@@ -1274,17 +1274,17 @@ add_multi_users() {
                         if echo "$username:$password" | chpasswd 2>/dev/null; then
                             if create_user_config "$username" "$password"; then
                                 created_users+=("$username")
-                                print_success "Nguoi dung '$username' da tao thanh cong!"
+                                print_success "user '$username' da tao thanh cong!"
                             else
-                                print_warning "Nguoi dung '$username' da tao nhung file cau hinh that bai!"
+                                print_warning "user '$username' da tao nhung file cau hinh that bai!"
                                 created_users+=("$username")
                             fi
                         else
-                            print_error "Khong the dat mat khau cho nguoi dung '$username'!"
+                            print_error "Khong the dat mat khau cho user '$username'!"
                             userdel "$username" 2>/dev/null
                         fi
                     else
-                        print_error "Khong the tao nguoi dung '$username'!"
+                        print_error "Khong the tao user '$username'!"
                     fi
                     break
                 else
@@ -1298,17 +1298,17 @@ add_multi_users() {
     done
     
     echo
-    print_success "Da tao thanh cong ${#created_users[@]} nguoi dung!"
+    print_success "Da tao thanh cong ${#created_users[@]} user!"
     print_success "File cau hinh da tao trong: $CONFIG_DIR/"
     
     echo
     read -p "Nhan Enter de tiep tuc..."
 }
 
-# Ham xoa nguoi dung
+# Ham xoa user
 delete_users() {
     print_header
-    print_section_header "Xoa Nguoi Dung"
+    print_section_header "Xoa user"
     
     local users=()
     while IFS= read -r user; do
@@ -1318,13 +1318,13 @@ delete_users() {
     done < <(getent passwd | grep '/bin/false' | cut -d: -f1 | sort)
     
     if [[ ${#users[@]} -eq 0 ]]; then
-        print_warning "Khong tim thay nguoi dung SOCKS5 nao de xoa."
+        print_warning "Khong tim thay user SOCKS5 nao de xoa."
         read -p "Nhan Enter de tiep tuc..."
         return
     fi
 
     echo
-    echo -e "${CYAN}┌─ Nguoi Dung Co San De Xoa ───────────────────────────────────────────────────┐${NC}"
+    echo -e "${CYAN}┌─ user Co San De Xoa ───────────────────────────────────────────────────┐${NC}"
     for i in "${!users[@]}"; do
         local user_number=$(printf "%3d." $((i+1)))
         local user_display="$user_number ${users[i]}"
@@ -1336,7 +1336,7 @@ delete_users() {
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
         
-    print_info_box "Nhap so thu tu nguoi dung de xoa (cach nhau bang dau cach, vi du '1 3 5'):"
+    print_info_box "Nhap so thu tu user de xoa (cach nhau bang dau cach, vi du '1 3 5'):"
     read -p "$(echo -e "${YELLOW}❯${NC} Lua chon: ")" selections
     
     if [[ -z "$selections" ]]; then
@@ -1355,19 +1355,19 @@ delete_users() {
     done
     
     if [[ ${#to_delete[@]} -eq 0 ]]; then
-        print_error "Khong co nguoi dung hop le nao duoc chon!"
+        print_error "Khong co user hop le nao duoc chon!"
         read -p "Nhan Enter de tiep tuc..."
         return
     fi
     
     echo
-    print_warning "Nguoi dung se bi xoa:"
+    print_warning "user se bi xoa:"
     for user in "${to_delete[@]}"; do
         echo -e "  ${RED}•${NC} $user"
     done
     
     echo
-    read -p "$(echo -e "${RED}❯${NC} Ban co chac chan muon xoa cac nguoi dung nay? (Y/N): ")" confirm
+    read -p "$(echo -e "${RED}❯${NC} Ban co chac chan muon xoa cac user nay? (Y/N): ")" confirm
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         print_warning "Thao tac da huy."
         read -p "Nhan Enter de tiep tuc..."
@@ -1375,23 +1375,23 @@ delete_users() {
     fi
     
     echo
-    print_color $YELLOW "Dang xoa nguoi dung..."
+    print_color $YELLOW "Dang xoa user..."
     
-    # Xoa nguoi dung
+    # Xoa user
     local deleted_count=0
     for user in "${to_delete[@]}"; do
         if userdel "$user" 2>/dev/null; then
             # Xoa file cau hinh
             rm -f "$CONFIG_DIR/$user"
-            print_success "Da xoa nguoi dung: $user"
+            print_success "Da xoa user: $user"
             ((deleted_count++))
         else
-            print_error "Khong the xoa nguoi dung: $user"
+            print_error "Khong the xoa user: $user"
         fi
     done
     
     echo
-    print_success "Da xoa thanh cong $deleted_count nguoi dung!"
+    print_success "Da xoa thanh cong $deleted_count user!"
     
     echo
     read -p "Nhan Enter de tiep tuc..."
@@ -1508,7 +1508,7 @@ test_proxies() {
     local total_count=${#proxies[@]}
     
 # Ket qua kiem tra proxy voi dinh dang hop dung
-    echo -e "${CYAN}┌─ Ket Qua Kiem Tra Proxy ─────────────────────────────────────────────────────┐${NC}"
+    echo -e "${CYAN}┌─ Ket Qua Kiem Tra Proxy ──────────────────────────────────────────────────────┐${NC}"
 
     for i in "${!proxies[@]}"; do
         local proxy="${proxies[i]}"
@@ -1606,7 +1606,7 @@ uninstall_danted() {
     printf "${RED}│${NC} %s%*s${RED}│${NC}\n" "$warning1" $warning1_padding ""
 
     # Dong canh bao thu hai
-    local warning2="Tat ca nguoi dung proxy va file cau hinh se bi anh huong."
+    local warning2="Tat ca user proxy va file cau hinh se bi anh huong."
     local warning2_length=$((${#warning2} + 1))
     local warning2_padding=$((78 - warning2_length))
     printf "${RED}│${NC} %s%*s${RED}│${NC}\n" "$warning2" $warning2_padding ""
@@ -1639,17 +1639,17 @@ uninstall_danted() {
     rm -f "$DANTED_CONFIG"
     rm -f /var/log/danted.log
     
-    # Hoi ve cau hinh nguoi dung
+    # Hoi ve cau hinh user
     if [[ -d "$CONFIG_DIR" ]] && [[ $(ls -A "$CONFIG_DIR" 2>/dev/null) ]]; then
         echo
-        read -p "$(echo -e "${YELLOW}❯${NC} Ban co muon xoa tat ca file cau hinh nguoi dung trong '$CONFIG_DIR'? (Y/N): ")" remove_configs
+        read -p "$(echo -e "${YELLOW}❯${NC} Ban co muon xoa tat ca file cau hinh user trong '$CONFIG_DIR'? (Y/N): ")" remove_configs
         if [[ "$remove_configs" =~ ^[Yy]$ ]]; then
             rm -rf "$CONFIG_DIR"
-            print_success "File cau hinh nguoi dung da xoa"
+            print_success "File cau hinh user da xoa"
         fi
     fi
     
-    # Hoi ve nguoi dung
+    # Hoi ve user
     local socks_users=()
     while IFS= read -r user; do
         if id "$user" &>/dev/null && [[ $(getent passwd "$user" | cut -d: -f7) == "/bin/false" ]]; then
@@ -1659,16 +1659,16 @@ uninstall_danted() {
     
     if [[ ${#socks_users[@]} -gt 0 ]]; then
         echo
-        print_warning "Tim thay ${#socks_users[@]} nguoi dung SOCKS5:"
+        print_warning "Tim thay ${#socks_users[@]} user SOCKS5:"
         for user in "${socks_users[@]}"; do
             echo -e "  ${YELLOW}•${NC} $user"
         done
         echo
-        read -p "$(echo -e "${YELLOW}❯${NC} Ban co muon xoa tat ca nguoi dung SOCKS5? (Y/N): ")" remove_users
+        read -p "$(echo -e "${YELLOW}❯${NC} Ban co muon xoa tat ca user SOCKS5? (Y/N): ")" remove_users
         if [[ "$remove_users" =~ ^[Yy]$ ]]; then
             for user in "${socks_users[@]}"; do
                 userdel "$user" 2>/dev/null
-                print_success "Da xoa nguoi dung: $user"
+                print_success "Da xoa user: $user"
             done
         fi
     fi
@@ -1691,9 +1691,9 @@ show_main_menu() {
     # Cac muc menu voi padding dung
     local menu_items=(
         "1. Cai Dat SOCKS5 Proxy Danted"
-        "2. Hien Thi Nguoi Dung"
-        "3. Them Nguoi Dung"
-        "4. Xoa Nguoi Dung"
+        "2. Hien Thi user"
+        "3. Them user"
+        "4. Xoa user"
         "5. Kiem Tra Proxy"
         "6. Kiem Tra Trang Thai & Giam Sat"
         "7. Go Cai Dat Danted"
