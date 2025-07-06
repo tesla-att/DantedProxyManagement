@@ -869,8 +869,8 @@ install_danted() {
             bar+="░"
         done
         
-        # Hien thi progress bar voi mau sac
-        printf "\r${CYAN}[${NC}%3d%%${CYAN}] ${NC}%s ${CYAN}[${NC}%s${CYAN}]${NC}" \
+        # Hien thi progress bar voi mau sac - cố định trên một dòng
+        printf "\r${CYAN}[${NC}%3d%%${CYAN}] ${NC}%-25s ${CYAN}[${NC}%s${CYAN}]${NC}" \
             "$percentage" "$step_name" "$bar"
         
         # Xuong dong neu hoan thanh
