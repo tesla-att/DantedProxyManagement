@@ -73,7 +73,7 @@ print_info_box() {
     echo
 }
 
-# Ham in thong bao thanh cong
+# Ham in thong bao thanh Port
 print_success() {
     local message=$1
     echo -e "${GREEN}✓${NC} ${GREEN}$message${NC}"
@@ -232,11 +232,11 @@ show_system_info() {
         auto_start_status="Da tat"
     fi
 
-    # Lay dia chi va cong nghe tu file cau hinh hoac netstat
+    # Lay dia chi va Port nghe tu file cau hinh hoac netstat
     if [ -f /etc/danted.conf ]; then
         internal_line=$(grep -E "^[[:space:]]*internal:" /etc/danted.conf | head -1)
         if [ -n "$internal_line" ]; then
-            # Trich xuat dia chi IP va cong tin cay hon
+            # Trich xuat dia chi IP va Port tin cay hon
             listen_address=$(echo "$internal_line" | sed -n 's/.*internal:[[:space:]]*\([^[:space:]]*\).*/\1/p' | sed 's/port=.*//')
             listen_port=$(echo "$internal_line" | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
             if [ -z "$listen_address" ]; then
@@ -383,7 +383,7 @@ check_service_status() {
     local control_items=(
         "1. Khoi Dong Lai Dich Vu"
         "2. Dung Dich Vu"           
-        "3. Thay Doi Cong"
+        "3. Thay Doi Port"
         "4. Kiem Tra Toc Do Internet"
         "5. Nhat Ky Day Du"
         "6. Quay Lai Menu Chinh"
@@ -405,7 +405,7 @@ check_service_status() {
             1)
                 print_color $YELLOW "Dang khoi dong lai dich vu Danted..."
                 if systemctl restart $DANTED_SERVICE; then
-                    print_success "Dich vu da khoi dong lai thanh cong!"
+                    print_success "Dich vu da khoi dong lai thanh Port!"
                 else
                     print_error "Khong the khoi dong lai dich vu!"
                 fi
@@ -416,7 +416,7 @@ check_service_status() {
             2)
                 print_color $YELLOW "Dang dung dich vu Danted..."
                 if systemctl stop $DANTED_SERVICE; then
-                    print_success "Dich vu da dung thanh cong!"
+                    print_success "Dich vu da dung thanh Port!"
                 else
                     print_error "Khong the dung dich vu!"
                 fi
@@ -452,10 +452,10 @@ check_service_status() {
     done
 }
 
-# Ham thay doi cong
+# Ham thay doi Port
 change_port() {
     print_header
-    print_section_header "Thay Doi Cong Danted"
+    print_section_header "Thay Doi Port Danted"
     
     # Kiem tra neu Danted da cai dat
     if [ ! -f "$DANTED_CONFIG" ]; then
@@ -466,7 +466,7 @@ change_port() {
         return
     fi
     
-    # Lay cong hien tai
+    # Lay Port hien tai
     local current_port=""
     if [ -f "$DANTED_CONFIG" ]; then
         current_port=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
@@ -477,18 +477,18 @@ change_port() {
     fi
     
     echo -e "${CYAN}┌─ Cau Hinh Hien Tai ──────────────────────────────────────────────────────────┐${NC}"
-    printf "${CYAN}${NC} Cong Hien Tai: ${YELLOW}%s${NC}%*s${CYAN}${NC}\n" "$current_port" 60 ""
+    printf "${CYAN}${NC} Port Hien Tai: ${YELLOW}%s${NC}%*s${CYAN}${NC}\n" "$current_port" 60 ""
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
     
-    # Lay cong moi
+    # Lay Port moi
     while true; do
-        read -p "$(echo -e "${YELLOW}❯${NC} Nhap cong moi (1-65535): ")" new_port
+        read -p "$(echo -e "${YELLOW}❯${NC} Nhap Port moi (1-65535): ")" new_port
         
         if [[ "$new_port" =~ ^[0-9]+$ ]] && [[ $new_port -ge 1 ]] && [[ $new_port -le 65535 ]]; then
-            # Kiem tra neu cong da duoc su dung
+            # Kiem tra neu Port da duoc su dung
             if netstat -tuln 2>/dev/null | grep -q ":$new_port "; then
-                print_error "Cong $new_port da duoc su dung!"
+                print_error "Port $new_port da duoc su dung!"
                 read -p "$(echo -e "${YELLOW}❯${NC} Ban co muon tiep tuc? (Y/N): ")" continue_anyway
                 if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
                     continue
@@ -496,7 +496,7 @@ change_port() {
             fi
             break
         else
-            print_error "So cong khong hop le. Vui long nhap so tu 1-65535."
+            print_error "So Port khong hop le. Vui long nhap so tu 1-65535."
         fi
     done
     
@@ -511,7 +511,7 @@ change_port() {
     fi
     
     echo
-    print_color $YELLOW "Dang thay doi cong thanh $new_port..."
+    print_color $YELLOW "Dang thay doi Port thanh $new_port..."
     
     # Sao luu cau hinh hien tai
     cp "$DANTED_CONFIG" "${DANTED_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)"
@@ -530,17 +530,17 @@ change_port() {
     sed -i "s/^[[:space:]]*internal:.*/internal: $current_ip port = $new_port/" "$DANTED_CONFIG"
     
     if [ $? -eq 0 ]; then
-        print_success "Cau hinh da cap nhat thanh cong!"
+        print_success "Cau hinh da cap nhat thanh Port!"
         
         # Khoi dong lai dich vu
         print_color $YELLOW "Dang khoi dong lai dich vu Danted..."
         if systemctl restart $DANTED_SERVICE; then
             sleep 2
             if systemctl is-active --quiet $DANTED_SERVICE; then
-                print_success "Dich vu da khoi dong lai thanh cong!"
-                print_success "Cong moi: $new_port"
+                print_success "Dich vu da khoi dong lai thanh Port!"
+                print_success "Port moi: $new_port"
             else
-                print_error "Dich vu khong the khoi dong voi cong moi!"
+                print_error "Dich vu khong the khoi dong voi Port moi!"
                 print_warning "Dang khoi phuc cau hinh truoc..."
                 cp "${DANTED_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)" "$DANTED_CONFIG"
                 systemctl restart $DANTED_SERVICE
@@ -659,7 +659,7 @@ test_proxy_speeds() {
     print_section_header "Kiem Tra Toc Do Proxy"
     
     # Hien thi vi du dinh dang
-    echo -e "${YELLOW}Dinh dang: ${WHITE}IP:CONG:TEN_DANG_NHAP:MAT_KHAU${NC}"
+    echo -e "${YELLOW}Dinh dang: ${WHITE}IP:Port:TEN_DANG_NHAP:MAT_KHAU${NC}"
     echo -e "${GRAY}Vi du:${NC}"
     echo -e "  ${CYAN}100.150.200.250:30500:user1:pass123${NC}"
     echo -e "${GRAY}Nhap mot proxy moi dong, Nhan Enter 2 lan de ket thuc.${NC}"
@@ -829,21 +829,21 @@ install_danted() {
         return
     fi
     
-    # Lay cong
+    # Lay Port
     echo
     while true; do
-        read -p "$(echo -e "${YELLOW}❯${NC} Nhap cong SOCKS5 (mac dinh: 1080): ")" port
+        read -p "$(echo -e "${YELLOW}❯${NC} Nhap Port SOCKS5 (mac dinh: 1080): ")" port
         port=${port:-1080}
         if [[ "$port" =~ ^[0-9]+$ ]] && [[ $port -ge 1 ]] && [[ $port -le 65535 ]]; then
             if ! netstat -tuln 2>/dev/null | grep -q ":$port "; then
                 SELECTED_PORT="$port"
                 break
             else
-                print_error "Cong $port da duoc su dung. Vui long chon cong khac."
+                print_error "Port $port da duoc su dung. Vui long chon Port khac."
                 
             fi
         else
-            print_error "So cong khong hop le. Vui long nhap so tu 1-65535."
+            print_error "So Port khong hop le. Vui long nhap so tu 1-65535."
         fi
     done
     
@@ -900,7 +900,7 @@ EOF
     sleep 2
     echo
     if systemctl is-active --quiet $DANTED_SERVICE; then
-        print_success "Danted da cai dat va khoi dong thanh cong!"
+        print_success "Danted da cai dat va khoi dong thanh Port!"
         print_success "Dang nghe tren: $SELECTED_IP:$SELECTED_PORT"
         print_success "Trang thai dich vu: Hoat dong"
     else
@@ -986,7 +986,7 @@ create_user_config() {
     fi
     
     if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
-        print_error "IP va cong may chu chua duoc cau hinh. Vui long cai dat Danted truoc."
+        print_error "IP va Port may chu chua duoc cau hinh. Vui long cai dat Danted truoc."
         return 1
     fi
     
@@ -1274,7 +1274,7 @@ add_multi_users() {
                         if echo "$username:$password" | chpasswd 2>/dev/null; then
                             if create_user_config "$username" "$password"; then
                                 created_users+=("$username")
-                                print_success "user '$username' da tao thanh cong!"
+                                print_success "user '$username' da tao thanh Port!"
                             else
                                 print_warning "user '$username' da tao nhung file cau hinh that bai!"
                                 created_users+=("$username")
@@ -1298,7 +1298,7 @@ add_multi_users() {
     done
     
     echo
-    print_success "Da tao thanh cong ${#created_users[@]} user!"
+    print_success "Da tao thanh Port ${#created_users[@]} user!"
     print_success "File cau hinh da tao trong: $CONFIG_DIR/"
     
     echo
@@ -1391,7 +1391,7 @@ delete_users() {
     done
     
     echo
-    print_success "Da xoa thanh cong $deleted_count user!"
+    print_success "Da xoa thanh Port $deleted_count user!"
     
     echo
     read -p "Nhan Enter de tiep tuc..."
@@ -1404,7 +1404,7 @@ test_proxies() {
     print_section_header "Kiem Tra Proxy"
     
     # Hien thi vi du dinh dang ro rang
-    echo -e "${YELLOW}Dinh dang: ${WHITE}IP:CONG:TEN_DANG_NHAP:MAT_KHAU${NC}"
+    echo -e "${YELLOW}Dinh dang: ${WHITE}IP:Port:TEN_DANG_NHAP:MAT_KHAU${NC}"
     echo -e "${GRAY}Vi du:${NC}"
     echo -e "  ${CYAN}100.150.200.250:30500:user1:pass123${NC}"
     echo -e "  ${CYAN}192.168.1.100:1080:alice:secret456${NC}"
@@ -1456,7 +1456,7 @@ test_proxies() {
             # Tach va xac thuc cac thanh phan
             IFS=':' read -r ip port user pass <<< "$proxy_line"
             
-            # Kiem tra neu tat ca cac thanh phan ton tai va cong la so
+            # Kiem tra neu tat ca cac thanh phan ton tai va Port la so
             if [[ -n "$ip" && -n "$port" && -n "$user" && -n "$pass" ]]; then
                 if [[ "$port" =~ ^[0-9]+$ ]] && [[ $port -ge 1 ]] && [[ $port -le 65535 ]]; then
                     # Kiem tra trung lap trong mang proxies
@@ -1493,7 +1493,7 @@ test_proxies() {
     if [[ ${#proxies[@]} -eq 0 ]]; then
         print_error "Khong co proxy hop le nao duoc cung cap!"
         if [[ $invalid_count -gt 0 ]]; then
-            echo -e "${GRAY}Kiem tra dinh dang proxy: IP:CONG:TEN_DANG_NHAP:MAT_KHAU${NC}"
+            echo -e "${GRAY}Kiem tra dinh dang proxy: IP:Port:TEN_DANG_NHAP:MAT_KHAU${NC}"
         fi
         read -p "Nhan Enter de tiep tuc..."
         return
@@ -1529,7 +1529,7 @@ test_proxies() {
         
         # Kiem tra proxy truoc
         if timeout 10 curl -s --proxy "$curl_proxy" --connect-timeout 5 -I http://httpbin.org/ip >/dev/null 2>&1; then
-            local result_text="${GREEN}✓ THANH CONG${NC}"
+            local result_text="${GREEN}✓ THANH Port${NC}"
             ((success_count++))
         else
             local result_text="${RED}✗ THAT BAI${NC}"
@@ -1539,7 +1539,7 @@ test_proxies() {
         local progress_len=${#progress_indicator}
         local proxy_len=${#display_proxy}
         # Do dai thuc te cua result_text khong tinh ma mau
-        local result_len=10  # "✓ THANH CONG" hoac "✗ THAT BAI" deu 10 ky tu
+        local result_len=10  # "✓ THANH Port" hoac "✗ THAT BAI" deu 10 ky tu
         
         # Tong noi dung: " " + progress + " " + proxy + " " + result + " "
         local total_content_len=$((1 + progress_len + 1 + proxy_len + 1 + result_len + 1))
@@ -1567,11 +1567,11 @@ test_proxies() {
     local total_padding=$((78 - total_length))
     printf "${CYAN}${NC} Tong Proxy:      ${WHITE}%s${NC}%*s${CYAN}${NC}\n" "$total_count" $total_padding ""
 
-    # Thanh cong
-    local success_text="Thanh cong: $success_count"
+    # Thanh Port
+    local success_text="Thanh Port: $success_count"
     local success_length=$((${#success_text} + 1))
     local success_padding=$((78 - success_length))
-    printf "${CYAN}${NC} Thanh Cong:      ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$success_count" $success_padding ""
+    printf "${CYAN}${NC} Thanh Port:      ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$success_count" $success_padding ""
 
     # That bai
     local failed_count=$((total_count - success_count))
@@ -1580,11 +1580,11 @@ test_proxies() {
     local failed_padding=$((78 - failed_length))
     printf "${CYAN}${NC} That Bai:        ${RED}%s${NC}%*s${CYAN}${NC}\n" "$failed_count" $failed_padding ""
 
-    # Ti le thanh cong
-    local rate_text="Ti le thanh cong: ${success_rate}%"
+    # Ti le thanh Port
+    local rate_text="Ti le thanh Port: ${success_rate}%"
     local rate_length=$((${#rate_text} + 1))
     local rate_padding=$((78 - rate_length))
-    printf "${CYAN}${NC} Ti Le Thanh Cong: ${YELLOW}%s%%${NC}%*s${CYAN}${NC}\n" "$success_rate" $rate_padding ""
+    printf "${CYAN}${NC} Ti Le Thanh Port: ${YELLOW}%s%%${NC}%*s${CYAN}${NC}\n" "$success_rate" $rate_padding ""
 
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     
@@ -1745,7 +1745,7 @@ main() {
                 # Xoa man hinh va hien thi thong bao cam on
                 clear
                 print_header
-                print_section_header "Cam on ban da su dung Quan ly SOCKS5 Proxy Danted!"
+                print_section_header "Cam on ban da su dung SOCKS5 Proxy Danted Manager!"
                 echo
                 exit 0
                 ;;
