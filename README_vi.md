@@ -628,6 +628,3 @@ MIT License - xem file [LICENSE](LICENSE) để biết chi tiết.
 - **V2Ray/Xray config**: Tương thích với V2Ray và Xray clients
 - **Contributors**: Tất cả những người đã đóng góp cho project
 
----
-
-**⚠️ Disclaimer**: Script này được cung cấp "as-is" không có bảo hành. Sử dụng với trách nhiệm của bạn và tuân thủ luật pháp địa phương.
