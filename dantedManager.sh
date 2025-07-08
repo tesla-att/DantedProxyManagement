@@ -1055,7 +1055,7 @@ create_user_config() {
   ],
   "outbounds": [
     {
-      "tag": "proxy-1",
+      "tag": "proxy-csol",
       "protocol": "socks",
       "settings": {
         "servers": [
