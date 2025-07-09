@@ -447,6 +447,7 @@ check_service_status() {
                 ;;
             *)
                 print_error "Tuy chon khong hop le!"
+                return
                 ;;
         esac
     done
