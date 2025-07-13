@@ -884,12 +884,6 @@ install_danted() {
     cat > "$DANTED_CONFIG" << 'EOF'
 # Danted SOCKS5 Proxy Configuration
 logoutput: /var/log/danted.log
-log: connect disconnect error
-debug: 1
-
-# User configuration
-user.privileged: root
-user.unprivileged: dante
 
 # Network configuration
 internal: SELECTED_IP_PLACEHOLDER port = SELECTED_PORT_PLACEHOLDER
