@@ -260,12 +260,22 @@ show_system_info() {
 
     # Count active connections - simplified
     active_connections="0"
-    if command -v ss >/dev/null 2>&1; then
-        conn_count=$(ss -tn 2>/dev/null | grep -E ":1080|:8080|:3128" | wc -l)
-        active_connections="$conn_count"
-    elif command -v netstat >/dev/null 2>&1; then
-        conn_count=$(netstat -tn 2>/dev/null | grep -E ":1080|:8080|:3128" | wc -l)
-        active_connections="$conn_count"
+    
+    # Get current port from config if SELECTED_PORT is not set
+    if [[ -z "$SELECTED_PORT" ]]; then
+        if [ -f "$DANTED_CONFIG" ]; then
+            SELECTED_PORT=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
+        fi
+    fi
+    
+    if [[ -n "$SELECTED_PORT" ]]; then
+        if command -v ss >/dev/null 2>&1; then
+            conn_count=$(ss -tn 2>/dev/null | grep ":$SELECTED_PORT" | wc -l)
+            active_connections="$conn_count"
+        elif command -v netstat >/dev/null 2>&1; then
+            conn_count=$(netstat -tn 2>/dev/null | grep ":$SELECTED_PORT" | wc -l)
+            active_connections="$conn_count"
+        fi
     fi
 
     # Function to print formatted line with exact width control
