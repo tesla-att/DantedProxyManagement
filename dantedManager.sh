@@ -889,6 +889,7 @@ debug: 1
 
 # User configuration
 user.privileged: root
+user.unprivileged: dante
 
 # Network configuration
 internal: SELECTED_IP_PLACEHOLDER port = SELECTED_PORT_PLACEHOLDER
