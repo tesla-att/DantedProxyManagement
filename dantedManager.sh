@@ -509,7 +509,7 @@ check_service_status() {
     echo
     
     while true; do
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-6]: ")" choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-7]: ")" choice
         
         case $choice in
             1)
