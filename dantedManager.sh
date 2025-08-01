@@ -145,6 +145,105 @@ read_multiline_input() {
     done
 }
 
+detect_public_ip_silent() {
+    local detected_ip=""
+    local services=(
+        "curl -s --connect-timeout 10 --max-time 15 ifconfig.me"
+        "curl -s --connect-timeout 10 --max-time 15 ifconfig.co"  
+        "curl -s --connect-timeout 10 --max-time 15 ipinfo.io/ip"
+        "curl -s --connect-timeout 10 --max-time 15 icanhazip.com"
+        "curl -s --connect-timeout 10 --max-time 15 checkip.amazonaws.com"
+        "curl -s --connect-timeout 10 --max-time 15 ipecho.net/plain"
+        "wget -qO- --timeout=15 ifconfig.me"
+        "wget -qO- --timeout=15 ipinfo.io/ip"
+    )
+    
+    for service in "${services[@]}"; do
+        detected_ip=$(eval $service 2>/dev/null | tr -d '[:space:]')
+        
+        # Validate IP format
+        if [[ "$detected_ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            # Check each octet is between 0-255
+            local valid_ip=true
+            IFS='.' read -ra ADDR <<< "$detected_ip"
+            for octet in "${ADDR[@]}"; do
+                if [[ $octet -lt 0 || $octet -gt 255 ]]; then
+                    valid_ip=false
+                    break
+                fi
+            done
+            
+            if [[ "$valid_ip" == true ]]; then
+                echo "$detected_ip"
+                return 0
+            fi
+        fi
+    done
+    
+    return 1
+}
+
+# Function to detect public IP address (with display)
+detect_public_ip() {
+    local detected_ip=""
+    local services=(
+        "curl -s --connect-timeout 10 --max-time 15 ifconfig.me"
+        "curl -s --connect-timeout 10 --max-time 15 ifconfig.co"  
+        "curl -s --connect-timeout 10 --max-time 15 ipinfo.io/ip"
+        "curl -s --connect-timeout 10 --max-time 15 icanhazip.com"
+        "curl -s --connect-timeout 10 --max-time 15 checkip.amazonaws.com"
+        "curl -s --connect-timeout 10 --max-time 15 ipecho.net/plain"
+        "wget -qO- --timeout=15 ifconfig.me"
+        "wget -qO- --timeout=15 ipinfo.io/ip"
+    )
+    
+    print_color $YELLOW "🔍 Auto-detecting public IP address..."
+    
+    for service in "${services[@]}"; do
+        local service_name=$(echo "$service" | grep -o '[a-zA-Z0-9.-]*\.[a-zA-Z]*' | head -1)
+        print_color $GRAY "  Trying $service_name..."
+        
+        detected_ip=$(eval $service 2>/dev/null | tr -d '[:space:]')
+        
+        # Validate IP format
+        if [[ "$detected_ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            # Check each octet is between 0-255
+            local valid_ip=true
+            IFS='.' read -ra ADDR <<< "$detected_ip"
+            for octet in "${ADDR[@]}"; do
+                if [[ $octet -lt 0 || $octet -gt 255 ]]; then
+                    valid_ip=false
+                    break
+                fi
+            done
+            
+            if [[ "$valid_ip" == true ]]; then
+                print_success "Detected public IP: $detected_ip"
+                echo "$detected_ip"
+                return 0
+            fi
+        fi
+    done
+    
+    print_error "Failed to auto-detect public IP address"
+    return 1
+}
+
+# Function to check if IP exists on network interfaces
+check_ip_exists() {
+    local ip_to_check=$1
+    if [[ "$ip_to_check" == "0.0.0.0" ]]; then
+        return 0  # 0.0.0.0 is always valid
+    fi
+    
+    # Check if IP exists on any interface
+    if ip addr show | grep -q "inet $ip_to_check/"; then
+        return 0  # IP exists
+    else
+        return 1  # IP doesn't exist
+    fi
+}
+
 # Function to get network interfaces with IPs
 get_network_interfaces() {
     print_section_header "Network Interface Selection"
@@ -394,9 +493,10 @@ check_service_status() {
         "1. Restart Service"
         "2. Stop Service"           
         "3. Change Port"
-        "4. Test Internet Bandwidth (beta)"
-        "5. Full Service Logs"
-        "6. Back to Main Menu"
+        "4. Update Config Files"
+        "5. Test Internet Bandwidth (beta)"
+        "6. Full Service Logs"
+        "7. Back to Main Menu"
     )
 
     for item in "${control_items[@]}"; do
@@ -440,11 +540,16 @@ check_service_status() {
                 return
                 ;;
             4)
-                test_bandwidth
+                update_config_files 
                 check_service_status
                 return
                 ;;
             5)
+                test_bandwidth
+                check_service_status
+                return
+                ;;
+            6)
                 print_section_header "Full Service Logs"
                 journalctl -u $DANTED_SERVICE --no-pager -n 50
                 echo
@@ -452,7 +557,7 @@ check_service_status() {
                 check_service_status
                 return
                 ;;
-            6)
+            7)
                 break
                 ;;
             *)
@@ -562,6 +667,248 @@ change_port() {
         fi
     else
         print_error "Failed to update configuration!"
+    fi
+    
+    echo
+    read -p "Press Enter to continue..."
+}
+
+update_config_files() {
+    print_header
+    print_section_header "Update V2Ray/Xray Config Files"
+    
+    # Check if config directory exists
+    if [[ ! -d "$CONFIG_DIR" ]]; then
+        print_error "Config directory '$CONFIG_DIR' does not exist!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Find all config files
+    local config_files=()
+    while IFS= read -r -d '' file; do
+        config_files+=("$file")
+    done < <(find "$CONFIG_DIR" -type f -print0 2>/dev/null)
+    
+    if [[ ${#config_files[@]} -eq 0 ]]; then
+        print_warning "No config files found in '$CONFIG_DIR'!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Display current config files
+    echo -e "${CYAN}┌─ Found Config Files (${#config_files[@]} files) ───────────────────────────────────────────────┐${NC}"
+
+    # Extract current config from first file
+    local current_ip=""
+    local current_port=""
+    
+    if [[ ${#config_files[@]} -gt 0 ]]; then
+        # Use jq to extract IP and port from outbounds section (more reliable for JSON)
+        if command -v jq &>/dev/null; then
+            current_ip=$(jq -r '.outbounds[] | select(.settings.servers) | .settings.servers[0].address // empty' "${config_files[0]}" 2>/dev/null)
+            current_port=$(jq -r '.outbounds[] | select(.settings.servers) | .settings.servers[0].port // empty' "${config_files[0]}" 2>/dev/null)
+        else
+            # Fallback to grep if jq is not available
+            current_ip=$(grep -o '"address": "[^"]*"' "${config_files[0]}" | head -1 | cut -d'"' -f4)
+            current_port=$(grep -o '"port": [0-9]*' "${config_files[0]}" | head -1 | grep -o '[0-9]*')
+        fi
+    fi
+
+    # Display all config files
+    for i in "${!config_files[@]}"; do
+        local filename=$(basename "${config_files[i]}")
+        local user_number=$(printf "%3d." $((i+1)))
+        local user_display="$user_number $filename"
+        local user_length=$((${#user_display} + 1))
+        local user_padding=$((78 - user_length))
+
+        printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
+    done
+    
+    # Show current config after file list
+    if [[ -n "$current_ip" && -n "$current_port" ]]; then
+        echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${NC}"
+        printf "${CYAN}│${NC} ${GRAY}Current config: ${WHITE}%s:%s${NC}%*s${CYAN}│${NC}\n" "$current_ip" "$current_port" $((78 - 18 - ${#current_ip} - ${#current_port})) ""
+    fi
+    
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo
+    
+    # Get new IP address
+    local new_ip=""
+    while true; do
+        # Try to get current server IP first
+        local detected_ip=""
+        if [[ -n "$DETECTED_PUBLIC_IP" ]]; then
+            detected_ip="$DETECTED_PUBLIC_IP"
+        else
+            detected_ip=$(detect_public_ip_silent)
+        fi
+        
+        if [[ -n "$detected_ip" ]]; then
+            print_color $CYAN "💡 Auto-detected current server IP: $detected_ip"
+            read -p "$(echo -e "${YELLOW}❯${NC} Enter new IP address (or press Enter to use $detected_ip): ")" new_ip
+            new_ip=${new_ip:-$detected_ip}
+        else
+            read -p "$(echo -e "${YELLOW}❯${NC} Enter new IP address: ")" new_ip
+        fi
+        
+        # Validate IP format
+        if [[ "$new_ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            local valid_ip=true
+            IFS='.' read -ra ADDR <<< "$new_ip"
+            for octet in "${ADDR[@]}"; do
+                if [[ $octet -lt 0 || $octet -gt 255 ]]; then
+                    valid_ip=false
+                    break
+                fi
+            done
+            
+            if [[ "$valid_ip" == true ]]; then
+                break
+            else
+                print_error "Invalid IP address. Each number must be between 0-255."
+            fi
+        else
+            print_error "Invalid IP format. Please use format: xxx.xxx.xxx.xxx"
+        fi
+    done
+    
+    # Get new port
+    local new_port=""
+    while true; do
+        # Try to get current port from Dante config
+        local current_dante_port=""
+        if [[ -f "$DANTED_CONFIG" ]]; then
+            current_dante_port=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
+        fi
+        
+        if [[ -n "$current_dante_port" ]]; then
+            print_color $CYAN "💡 Current Dante server port: $current_dante_port"
+            read -p "$(echo -e "${YELLOW}❯${NC} Enter new port (or press Enter to use $current_dante_port): ")" new_port
+            new_port=${new_port:-$current_dante_port}
+        else
+            read -p "$(echo -e "${YELLOW}❯${NC} Enter new port: ")" new_port
+        fi
+        
+        if [[ "$new_port" =~ ^[0-9]+$ ]] && [[ $new_port -ge 1 ]] && [[ $new_port -le 65535 ]]; then
+            break
+        else
+            print_error "Invalid port number. Please enter a number between 1-65535."
+        fi
+    done
+    
+    # Confirm changes
+    echo
+    print_info_box "Will update ${#config_files[@]} config files with: $new_ip:$new_port"
+    read -p "$(echo -e "${YELLOW}❯${NC} Continue with update? (Y/N): ")" confirm
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        print_warning "Operation cancelled."
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    echo
+    print_color $YELLOW "Updating config files..."
+    
+    # Create backup directory
+    local backup_dir="${CONFIG_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$backup_dir"
+    
+    # Update each config file
+    local updated_count=0
+    local failed_count=0
+    
+    for config_file in "${config_files[@]}"; do
+        local filename=$(basename "$config_file")
+        echo -e "${CYAN}Processing: ${WHITE}$filename${NC}"
+        
+        # Create backup
+        cp "$config_file" "$backup_dir/$filename" 2>/dev/null
+        
+        # Create temporary file for processing
+        local temp_file=$(mktemp)
+        
+        # Update IP and port using jq (more reliable for JSON)
+        if command -v jq &>/dev/null; then
+            # Use jq to update only outbounds settings
+            if jq --arg ip "$new_ip" --argjson port "$new_port" \
+                '(.outbounds[] | select(.settings.servers) | .settings.servers[].address) |= $ip | 
+                 (.outbounds[] | select(.settings.servers) | .settings.servers[].port) |= $port' \
+                "$config_file" > "$temp_file" 2>/dev/null; then
+                
+                # Validate JSON format
+                if python3 -m json.tool "$temp_file" >/dev/null 2>&1; then
+                    mv "$temp_file" "$config_file"
+                    print_success "  ✓ Updated: $filename"
+                    ((updated_count++))
+                else
+                    print_error "  ✗ JSON validation failed: $filename"
+                    rm -f "$temp_file"
+                    ((failed_count++))
+                fi
+            else
+                print_error "  ✗ Failed to process with jq: $filename"
+                rm -f "$temp_file"
+                ((failed_count++))
+            fi
+        else
+            # Fallback to sed if jq is not available
+            print_warning "  ⚠ jq not found, using sed (may cause issues)"
+            if sed -e "s/\"address\": \"[^\"]*\"/\"address\": \"$new_ip\"/g" \
+                   -e "s/\"port\": [0-9]*/\"port\": $new_port/g" \
+                   "$config_file" > "$temp_file" 2>/dev/null; then
+                
+                # Validate JSON format
+                if python3 -m json.tool "$temp_file" >/dev/null 2>&1; then
+                    mv "$temp_file" "$config_file"
+                    print_success "  ✓ Updated: $filename (using sed)"
+                    ((updated_count++))
+                else
+                    print_error "  ✗ JSON validation failed: $filename"
+                    rm -f "$temp_file"
+                    ((failed_count++))
+                fi
+            else
+                print_error "  ✗ Failed to process: $filename"
+                rm -f "$temp_file"
+                ((failed_count++))
+            fi
+        fi
+    done
+    
+    echo
+    print_success "Update completed!"
+    print_success "✅ Successfully updated: $updated_count files"
+    
+    if [[ $failed_count -gt 0 ]]; then
+        print_error "❌ Failed to update: $failed_count files"
+    fi
+    
+    print_success "📁 Backup created in: $backup_dir"
+    
+    # Show sample of updated config
+    if [[ $updated_count -gt 0 ]]; then
+        echo
+        print_color $CYAN "📋 Sample updated configuration:"
+        local sample_file="${config_files[0]}"
+        local sample_name=$(basename "$sample_file")
+        echo -e "${GRAY}From file: $sample_name${NC}"
+        
+        # Extract and show the server configuration part
+        echo -e "${CYAN}┌─ Updated Server Config ──────────────────────────────────────────────────────┐${NC}"
+        
+        local address_line=$(grep -n '"address":' "$sample_file" | head -1)
+        local port_line=$(grep -n '"port":' "$sample_file" | head -1)
+        
+        if [[ -n "$address_line" && -n "$port_line" ]]; then
+            printf "${CYAN}│${NC} ${GREEN}\"address\": \"$new_ip\"${NC}%*s${CYAN}│${NC}\n" $((78 - 14 - ${#new_ip})) ""
+            printf "${CYAN}│${NC} ${GREEN}\"port\": $new_port${NC}%*s${CYAN}│${NC}\n" $((78 - 9 - ${#new_port})) ""
+        fi
+        
+        echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     fi
     
     echo
