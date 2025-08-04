@@ -23,6 +23,49 @@ DANTED_SERVICE="danted"
 SELECTED_IP=""
 SELECTED_PORT=""
 
+# Function to check dependencies
+check_dependencies() {
+    local missing_deps=()
+    
+    # Check for jq (recommended for JSON processing)
+    if ! command -v jq &>/dev/null; then
+        missing_deps+=("jq")
+    fi
+    
+    # Check for python3 (needed for JSON validation)
+    if ! command -v python3 &>/dev/null; then
+        missing_deps+=("python3")
+    fi
+    
+    # Check for awk (fallback for JSON processing)
+    if ! command -v awk &>/dev/null; then
+        missing_deps+=("awk")
+    fi
+    
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        print_warning "Some recommended dependencies are missing:"
+        for dep in "${missing_deps[@]}"; do
+            case "$dep" in
+                "jq")
+                    print_warning "  - jq: For reliable JSON processing (recommended)"
+                    print_warning "    Install with: sudo apt-get install jq"
+                    ;;
+                "python3")
+                    print_warning "  - python3: For JSON validation"
+                    print_warning "    Install with: sudo apt-get install python3"
+                    ;;
+                "awk")
+                    print_warning "  - awk: For JSON processing fallback"
+                    print_warning "    Install with: sudo apt-get install gawk"
+                    ;;
+            esac
+        done
+        echo
+        print_warning "The script will work with fallback methods, but installing jq is recommended for better reliability."
+        echo
+    fi
+}
+
 # Create config directory if not exists
 if [[ ! -d "$CONFIG_DIR" ]]; then
     mkdir -p "$CONFIG_DIR" 2>/dev/null || {
@@ -31,6 +74,9 @@ if [[ ! -d "$CONFIG_DIR" ]]; then
         exit 1
     }
 fi
+
+# Check dependencies
+check_dependencies
 
 # Function to print colored output
 print_color() {
@@ -492,11 +538,10 @@ check_service_status() {
     local control_items=(
         "1. Restart Service"
         "2. Stop Service"           
-        "3. Change Port"
-        "4. Update Config Files"
-        "5. Test Internet Bandwidth (beta)"
-        "6. Full Service Logs"
-        "7. Back to Main Menu"
+        "3. Change Listen IP & Port"
+        "4. Test Internet Bandwidth (beta)"
+        "5. Full Service Logs"
+        "6. Back to Main Menu"
     )
 
     for item in "${control_items[@]}"; do
@@ -509,7 +554,7 @@ check_service_status() {
     echo
     
     while true; do
-        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-7]: ")" choice
+        read -p "$(echo -e "${YELLOW}❯${NC} Select option [1-6]: ")" choice
         
         case $choice in
             1)
@@ -535,21 +580,16 @@ check_service_status() {
                 return
                 ;;  
             3)
-                change_port
+                change_listenIP_and_listenport
                 check_service_status
                 return
                 ;;
-            4)
-                update_config_files 
-                check_service_status
-                return
-                ;;
-            5)
+            4)  
                 test_bandwidth
                 check_service_status
                 return
                 ;;
-            6)
+            5)
                 print_section_header "Full Service Logs"
                 journalctl -u $DANTED_SERVICE --no-pager -n 50
                 echo
@@ -557,7 +597,7 @@ check_service_status() {
                 check_service_status
                 return
                 ;;
-            7)
+            6)
                 break
                 ;;
             *)
@@ -567,10 +607,10 @@ check_service_status() {
     done
 }
 
-# Function to change port
-change_port() {
+# Function to change listen IP and port (combined functionality)
+change_listenIP_and_listenport() {
     print_header
-    print_section_header "Change Danted Port"
+    print_section_header "Change Listen IP and Port"
     
     # Check if Danted is installed
     if [ ! -f "$DANTED_CONFIG" ]; then
@@ -581,157 +621,25 @@ change_port() {
         return
     fi
     
-    # Get current port
+    # Get current IP and port from Danted config
+    local current_ip=""
     local current_port=""
     if [ -f "$DANTED_CONFIG" ]; then
-        current_port=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
-    fi
-    
-    if [ -z "$current_port" ]; then
-        current_port="Not configured"
-    fi
-    
-    echo -e "${CYAN}┌─ Current Configuration ──────────────────────────────────────────────────────┐${NC}"
-    printf "${CYAN}${NC} Current Port: ${YELLOW}%s${NC}%*s${CYAN}${NC}\n" "$current_port" 60 ""
-    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
-    echo
-    
-    # Get new port
-    while true; do
-        read -p "$(echo -e "${YELLOW}❯${NC} Enter new port (1-65535): ")" new_port
-        
-        if [[ "$new_port" =~ ^[0-9]+$ ]] && [[ $new_port -ge 1 ]] && [[ $new_port -le 65535 ]]; then
-            # Check if port is already in use
-            if netstat -tuln 2>/dev/null | grep -q ":$new_port "; then
-                print_error "Port $new_port is already in use!"
-                read -p "$(echo -e "${YELLOW}❯${NC} Do you want to continue anyway? (Y/N): ")" continue_anyway
-                if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
-                    continue
-                fi
-            fi
-            break
-        else
-            print_error "Invalid port number. Please enter a number between 1-65535."
-        fi
-    done
-    
-    echo
-    print_warning "This will restart the Danted service."
-    read -p "$(echo -e "${YELLOW}❯${NC} Continue? (Y/N): ")" confirm
-    
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        print_warning "Operation cancelled."
-        read -p "Press Enter to continue..."
-        return
-    fi
-    
-    echo
-    print_color $YELLOW "Changing port to $new_port..."
-    
-    # Backup current config
-    cp "$DANTED_CONFIG" "${DANTED_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)"
-    
-    # Get current IP address
-    local current_ip=""
-    if [ -f "$DANTED_CONFIG" ]; then
         current_ip=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | sed -n 's/.*internal:[[:space:]]*\([^[:space:]]*\).*/\1/p' | sed 's/port=.*//')
+        current_port=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
     fi
     
     if [ -z "$current_ip" ]; then
         current_ip="0.0.0.0"
     fi
     
-    # Update config file
-    sed -i "s/^[[:space:]]*internal:.*/internal: $current_ip port = $new_port/" "$DANTED_CONFIG"
-    
-    if [ $? -eq 0 ]; then
-        print_success "Configuration updated successfully!"
-        
-        # Restart service
-        print_color $YELLOW "Restarting Danted service..."
-        if systemctl restart $DANTED_SERVICE; then
-            sleep 2
-            if systemctl is-active --quiet $DANTED_SERVICE; then
-                print_success "Service restarted successfully!"
-                print_success "New port: $new_port"
-            else
-                print_error "Service failed to start with new port!"
-                print_warning "Restoring previous configuration..."
-                cp "${DANTED_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)" "$DANTED_CONFIG"
-                systemctl restart $DANTED_SERVICE
-            fi
-        else
-            print_error "Failed to restart service!"
-            print_warning "Restoring previous configuration..."
-            cp "${DANTED_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)" "$DANTED_CONFIG"
-        fi
-    else
-        print_error "Failed to update configuration!"
+    if [ -z "$current_port" ]; then
+        current_port="Not configured"
     fi
     
-    echo
-    read -p "Press Enter to continue..."
-}
-
-update_config_files() {
-    print_header
-    print_section_header "Update V2Ray/Xray Config Files"
-    
-    # Check if config directory exists
-    if [[ ! -d "$CONFIG_DIR" ]]; then
-        print_error "Config directory '$CONFIG_DIR' does not exist!"
-        read -p "Press Enter to continue..."
-        return
-    fi
-    
-    # Find all config files
-    local config_files=()
-    while IFS= read -r -d '' file; do
-        config_files+=("$file")
-    done < <(find "$CONFIG_DIR" -type f -print0 2>/dev/null)
-    
-    if [[ ${#config_files[@]} -eq 0 ]]; then
-        print_warning "No config files found in '$CONFIG_DIR'!"
-        read -p "Press Enter to continue..."
-        return
-    fi
-    
-    # Display current config files
-    echo -e "${CYAN}┌─ Found Config Files (${#config_files[@]} files) ───────────────────────────────────────────────┐${NC}"
-
-    # Extract current config from first file
-    local current_ip=""
-    local current_port=""
-    
-    if [[ ${#config_files[@]} -gt 0 ]]; then
-        # Use jq to extract IP and port from outbounds section (more reliable for JSON)
-        if command -v jq &>/dev/null; then
-            current_ip=$(jq -r '.outbounds[] | select(.settings.servers) | .settings.servers[0].address // empty' "${config_files[0]}" 2>/dev/null)
-            current_port=$(jq -r '.outbounds[] | select(.settings.servers) | .settings.servers[0].port // empty' "${config_files[0]}" 2>/dev/null)
-        else
-            # Fallback to grep if jq is not available
-            current_ip=$(grep -o '"address": "[^"]*"' "${config_files[0]}" | head -1 | cut -d'"' -f4)
-            current_port=$(grep -o '"port": [0-9]*' "${config_files[0]}" | head -1 | grep -o '[0-9]*')
-        fi
-    fi
-
-    # Display all config files
-    for i in "${!config_files[@]}"; do
-        local filename=$(basename "${config_files[i]}")
-        local user_number=$(printf "%3d." $((i+1)))
-        local user_display="$user_number $filename"
-        local user_length=$((${#user_display} + 1))
-        local user_padding=$((78 - user_length))
-
-        printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
-    done
-    
-    # Show current config after file list
-    if [[ -n "$current_ip" && -n "$current_port" ]]; then
-        echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${NC}"
-        printf "${CYAN}│${NC} ${GRAY}Current config: ${WHITE}%s:%s${NC}%*s${CYAN}│${NC}\n" "$current_ip" "$current_port" $((78 - 18 - ${#current_ip} - ${#current_port})) ""
-    fi
-    
+    echo -e "${CYAN}┌─ Current Danted Configuration ───────────────────────────────────────────────┐${NC}"
+    printf "${CYAN}│${NC} Current IP: ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$current_ip" $((78 - 13 - ${#current_ip})) ""
+    printf "${CYAN}│${NC} Current Port: ${YELLOW}%s${NC}%*s${CYAN}│${NC}\n" "$current_port" $((78 - 15 - ${#current_port})) ""
     echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
     echo
     
@@ -778,31 +686,26 @@ update_config_files() {
     # Get new port
     local new_port=""
     while true; do
-        # Try to get current port from Dante config
-        local current_dante_port=""
-        if [[ -f "$DANTED_CONFIG" ]]; then
-            current_dante_port=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1 | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
-        fi
-        
-        if [[ -n "$current_dante_port" ]]; then
-            print_color $CYAN "💡 Current Dante server port: $current_dante_port"
-            read -p "$(echo -e "${YELLOW}❯${NC} Enter new port (or press Enter to use $current_dante_port): ")" new_port
-            new_port=${new_port:-$current_dante_port}
-        else
-            read -p "$(echo -e "${YELLOW}❯${NC} Enter new port: ")" new_port
-        fi
+        read -p "$(echo -e "${YELLOW}❯${NC} Enter new port (1-65535): ")" new_port
         
         if [[ "$new_port" =~ ^[0-9]+$ ]] && [[ $new_port -ge 1 ]] && [[ $new_port -le 65535 ]]; then
+            # Check if port is already in use
+            if netstat -tuln 2>/dev/null | grep -q ":$new_port "; then
+                print_error "Port $new_port is already in use!"
+                read -p "$(echo -e "${YELLOW}❯${NC} Do you want to continue anyway? (Y/N): ")" continue_anyway
+                if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+                    continue
+                fi
+            fi
             break
         else
             print_error "Invalid port number. Please enter a number between 1-65535."
         fi
     done
     
-    # Confirm changes
     echo
-    print_info_box "Will update ${#config_files[@]} config files with: $new_ip:$new_port"
-    read -p "$(echo -e "${YELLOW}❯${NC} Continue with update? (Y/N): ")" confirm
+    print_warning "This will update both Danted configuration and V2Ray/Xray config files."
+    read -p "$(echo -e "${YELLOW}❯${NC} Continue? (Y/N): ")" confirm
     
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         print_warning "Operation cancelled."
@@ -811,10 +714,206 @@ update_config_files() {
     fi
     
     echo
-    print_color $YELLOW "Updating config files..."
+    print_color $YELLOW "Updating Danted configuration..."
     
-    # Create backup directory
-    local backup_dir="${CONFIG_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
+    # Backup current Danted config with timestamp
+    local backup_timestamp=$(date +%Y%m%d_%H%M%S)
+    local backup_file="${DANTED_CONFIG}.backup.${backup_timestamp}"
+    cp "$DANTED_CONFIG" "$backup_file"
+    
+    # Update Danted config file
+    sed -i "s/^[[:space:]]*internal:.*/internal: $new_ip port = $new_port/" "$DANTED_CONFIG"
+    
+    if [ $? -eq 0 ]; then
+        print_success "Danted configuration updated successfully!"
+        
+        # Restart Danted service
+        print_color $YELLOW "Restarting Danted service..."
+        if systemctl restart $DANTED_SERVICE; then
+            sleep 2
+            if systemctl is-active --quiet $DANTED_SERVICE; then
+                print_success "Danted service restarted successfully!"
+                print_success "New Danted config: $new_ip:$new_port"
+            else
+                print_error "Danted service failed to start with new configuration!"
+                print_warning "Checking service status and logs..."
+                systemctl status $DANTED_SERVICE --no-pager -l
+                echo
+                print_warning "Restoring previous Danted configuration..."
+                if [[ -f "$backup_file" ]]; then
+                    cp "$backup_file" "$DANTED_CONFIG"
+                    systemctl restart $DANTED_SERVICE
+                    if systemctl is-active --quiet $DANTED_SERVICE; then
+                        print_success "Configuration restored and service restarted successfully!"
+                    else
+                        print_error "Failed to restore configuration!"
+                    fi
+                else
+                    print_error "Backup file not found: $backup_file"
+                fi
+                read -p "Press Enter to continue..."
+                return
+            fi
+        else
+            print_error "Failed to restart Danted service!"
+            print_warning "Checking service status and logs..."
+            systemctl status $DANTED_SERVICE --no-pager -l
+            echo
+            print_warning "Restoring previous Danted configuration..."
+            if [[ -f "$backup_file" ]]; then
+                cp "$backup_file" "$DANTED_CONFIG"
+                systemctl restart $DANTED_SERVICE
+                if systemctl is-active --quiet $DANTED_SERVICE; then
+                    print_success "Configuration restored and service restarted successfully!"
+                else
+                    print_error "Failed to restore configuration!"
+                fi
+            else
+                print_error "Backup file not found: $backup_file"
+            fi
+            read -p "Press Enter to continue..."
+            return
+        fi
+    else
+        print_error "Failed to update Danted configuration!"
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Now update V2Ray/Xray config files
+    echo
+    print_color $YELLOW "Updating V2Ray/Xray config files..."
+    
+    # Check if config directory exists
+    if [[ ! -d "$CONFIG_DIR" ]]; then
+        print_warning "Config directory '$CONFIG_DIR' does not exist!"
+        print_success "Danted configuration updated successfully. V2Ray/Xray config files skipped."
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Find all config files
+    local config_files=()
+    while IFS= read -r -d '' file; do
+        config_files+=("$file")
+    done < <(find "$CONFIG_DIR" -type f -print0 2>/dev/null)
+    
+    if [[ ${#config_files[@]} -eq 0 ]]; then
+        print_warning "No config files found in '$CONFIG_DIR'!"
+        print_success "Danted configuration updated successfully. No V2Ray/Xray config files to update."
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Display current config files
+    echo -e "${CYAN}┌─ Found Config Files (${#config_files[@]} files) ───────────────────────────────────────────────┐${NC}"
+
+    # Extract current config from first file
+    local current_config_ip=""
+    local current_config_port=""
+    
+    if [[ ${#config_files[@]} -gt 0 ]]; then
+        # Use jq to extract IP and port from outbounds section (more reliable for JSON)
+        if command -v jq &>/dev/null; then
+            current_config_ip=$(jq -r '.outbounds[] | select(.settings.servers) | .settings.servers[0].address // empty' "${config_files[0]}" 2>/dev/null)
+            current_config_port=$(jq -r '.outbounds[] | select(.settings.servers) | .settings.servers[0].port // empty' "${config_files[0]}" 2>/dev/null)
+        else
+            # Fallback to awk if jq is not available (more reliable for JSON)
+            current_config_ip=$(awk '
+            BEGIN { in_outbounds = 0; in_servers = 0; found_address = 0 }
+            {
+                # Check for outbounds section
+                if ($0 ~ /"outbounds"/) in_outbounds = 1
+                
+                # Check for servers section within outbounds
+                if (in_outbounds && $0 ~ /"servers"/) in_servers = 1
+                
+                # Extract address only within servers section of outbounds
+                if (in_servers && in_outbounds && !found_address && $0 ~ /"address"[[:space:]]*:[[:space:]]*"[^"]*"/) {
+                    match($0, /"address"[[:space:]]*:[[:space:]]*"([^"]*)"/, arr)
+                    if (arr[1] != "") {
+                        print arr[1]
+                        found_address = 1
+                        exit
+                    }
+                }
+                
+                # Check if we are exiting servers section
+                if (in_servers && $0 ~ /^[[:space:]]*\]/) {
+                    in_servers = 0
+                }
+                
+                # Check if we are exiting outbounds section
+                if (in_outbounds && $0 ~ /^[[:space:]]*\]/) {
+                    in_outbounds = 0
+                }
+            }' "${config_files[0]}" 2>/dev/null)
+            
+            current_config_port=$(awk '
+            BEGIN { in_outbounds = 0; in_servers = 0; found_port = 0 }
+            {
+                # Check for outbounds section
+                if ($0 ~ /"outbounds"/) in_outbounds = 1
+                
+                # Check for servers section within outbounds
+                if (in_outbounds && $0 ~ /"servers"/) in_servers = 1
+                
+                # Extract port only within servers section of outbounds
+                if (in_servers && in_outbounds && !found_port && $0 ~ /"port"[[:space:]]*:[[:space:]]*[0-9]+/) {
+                    match($0, /"port"[[:space:]]*:[[:space:]]*([0-9]+)/, arr)
+                    if (arr[1] != "") {
+                        print arr[1]
+                        found_port = 1
+                        exit
+                    }
+                }
+                
+                # Check if we are exiting servers section
+                if (in_servers && $0 ~ /^[[:space:]]*\]/) {
+                    in_servers = 0
+                }
+                
+                # Check if we are exiting outbounds section
+                if (in_outbounds && $0 ~ /^[[:space:]]*\]/) {
+                    in_outbounds = 0
+                }
+            }' "${config_files[0]}" 2>/dev/null)
+        fi
+    fi
+
+    # Display all config files
+    for i in "${!config_files[@]}"; do
+        local filename=$(basename "${config_files[i]}")
+        local user_number=$(printf "%3d." $((i+1)))
+        local user_display="$user_number $filename"
+        local user_length=$((${#user_display} + 1))
+        local user_padding=$((78 - user_length))
+
+        printf "${CYAN}│${NC} %s%*s${CYAN}│${NC}\n" "$user_display" $user_padding ""
+    done
+    
+    # Show current config after file list
+    if [[ -n "$current_config_ip" && -n "$current_config_port" ]]; then
+        echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${NC}"
+        printf "${CYAN}│${NC} ${GRAY}Current config: ${WHITE}%s:%s${NC}%*s${CYAN}│${NC}\n" "$current_config_ip" "$current_config_port" $((78 - 18 - ${#current_config_ip} - ${#current_config_port})) ""
+    fi
+    
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    echo
+    
+    # Confirm config file updates
+    print_info_box "Will update ${#config_files[@]} config files with: $new_ip:$new_port"
+    read -p "$(echo -e "${YELLOW}❯${NC} Continue with config file updates? (Y/N): ")" confirm_config
+    
+    if [[ ! "$confirm_config" =~ ^[Yy]$ ]]; then
+        print_warning "Config file updates cancelled."
+        print_success "Danted configuration updated successfully."
+        read -p "Press Enter to continue..."
+        return
+    fi
+    
+    # Create centralized backup directory
+    local backup_dir="${CONFIG_DIR}_backup"
     mkdir -p "$backup_dir"
     
     # Update each config file
@@ -825,8 +924,10 @@ update_config_files() {
         local filename=$(basename "$config_file")
         echo -e "${CYAN}Processing: ${WHITE}$filename${NC}"
         
-        # Create backup
-        cp "$config_file" "$backup_dir/$filename" 2>/dev/null
+        # Create backup with timestamp to avoid overwriting
+        local timestamp=$(date +%Y%m%d_%H%M%S)
+        local backup_filename="${filename%.*}_${timestamp}.${filename##*.}"
+        cp "$config_file" "$backup_dir/$backup_filename" 2>/dev/null
         
         # Create temporary file for processing
         local temp_file=$(mktemp)
@@ -855,16 +956,56 @@ update_config_files() {
                 ((failed_count++))
             fi
         else
-            # Fallback to sed if jq is not available
-            print_warning "  ⚠ jq not found, using sed (may cause issues)"
-            if sed -e "s/\"address\": \"[^\"]*\"/\"address\": \"$new_ip\"/g" \
-                   -e "s/\"port\": [0-9]*/\"port\": $new_port/g" \
-                   "$config_file" > "$temp_file" 2>/dev/null; then
+            # Fallback to awk if jq is not available (more reliable than sed for JSON)
+            
+            # Use awk to process JSON more carefully
+            if awk -v new_ip="$new_ip" -v new_port="$new_port" '
+            BEGIN { in_outbounds = 0; in_servers = 0; bracket_count = 0 }
+            {
+                line = $0
+                
+                # Track bracket nesting to detect structure
+                for (i = 1; i <= length(line); i++) {
+                    char = substr(line, i, 1)
+                    if (char == "{") bracket_count++
+                    if (char == "}") bracket_count--
+                }
+                
+                # Check for outbounds section
+                if (line ~ /"outbounds"/) in_outbounds = 1
+                
+                # Check for servers section within outbounds
+                if (in_outbounds && line ~ /"servers"/) in_servers = 1
+                
+                # Update only within servers section of outbounds
+                if (in_servers && in_outbounds) {
+                    # Update address field
+                    if (line ~ /"address"[[:space:]]*:[[:space:]]*"[^"]*"/) {
+                        gsub(/"address"[[:space:]]*:[[:space:]]*"[^"]*"/, "\"address\": \"" new_ip "\"", line)
+                    }
+                    # Update port field
+                    if (line ~ /"port"[[:space:]]*:[[:space:]]*[0-9]+/) {
+                        gsub(/"port"[[:space:]]*:[[:space:]]*[0-9]+/, "\"port\": " new_port, line)
+                    }
+                }
+                
+                # Check if we are exiting servers section (when we hit a closing bracket and bracket_count decreases)
+                if (in_servers && line ~ /^[[:space:]]*\]/) {
+                    in_servers = 0
+                }
+                
+                # Check if we are exiting outbounds section
+                if (in_outbounds && line ~ /^[[:space:]]*\]/) {
+                    in_outbounds = 0
+                }
+                
+                print line
+            }' "$config_file" > "$temp_file" 2>/dev/null; then
                 
                 # Validate JSON format
                 if python3 -m json.tool "$temp_file" >/dev/null 2>&1; then
                     mv "$temp_file" "$config_file"
-                    print_success "  ✓ Updated: $filename (using sed)"
+                    print_success "  ✓ Updated: $filename (using awk)"
                     ((updated_count++))
                 else
                     print_error "  ✗ JSON validation failed: $filename"
@@ -919,9 +1060,259 @@ update_config_files() {
 test_bandwidth() {
     clear
     print_header
-    print_section_header "Internet Bandwidth Test"
+    print_section_header "Network Monitoring & Bandwidth Test"
     
-    # Multiple test servers for better accuracy
+    # Function to format speed
+    format_speed() {
+        local speed=$1
+        if (( $(echo "$speed >= 1000" | bc -l 2>/dev/null || echo "0") )); then
+            echo "$(echo "scale=2; $speed / 1000" | bc -l 2>/dev/null || echo "0") Gbps"
+        else
+            echo "$(echo "scale=2; $speed" | bc -l 2>/dev/null || echo "0") Mbps"
+        fi
+    }
+    
+    # Function to format bytes
+    format_bytes() {
+        local bytes=$1
+        if (( $(echo "$bytes >= 1073741824" | bc -l 2>/dev/null || echo "0") )); then
+            echo "$(echo "scale=2; $bytes / 1073741824" | bc -l 2>/dev/null || echo "0") GB"
+        elif (( $(echo "$bytes >= 1048576" | bc -l 2>/dev/null || echo "0") )); then
+            echo "$(echo "scale=2; $bytes / 1048576" | bc -l 2>/dev/null || echo "0") MB"
+        elif (( $(echo "$bytes >= 1024" | bc -l 2>/dev/null || echo "0") )); then
+            echo "$(echo "scale=2; $bytes / 1024" | bc -l 2>/dev/null || echo "0") KB"
+        else
+            echo "${bytes} B"
+        fi
+    }
+    
+    # Function to get network interface with better detection
+    get_primary_interface() {
+        # Try multiple methods to find the primary interface
+        local interface=""
+        
+        # Method 1: Default route
+        interface=$(ip route | grep default | awk '{print $5}' | head -1)
+        
+        # Method 2: First non-loopback interface
+        if [[ -z "$interface" ]]; then
+            interface=$(ip link show | grep -E '^[0-9]+:' | grep -v lo | head -1 | awk -F: '{print $2}' | xargs)
+        fi
+        
+        # Method 3: Check common interface names
+        if [[ -z "$interface" ]]; then
+            for common_if in eth0 ens3 ens33 enp0s3 eno1; do
+                if ip link show "$common_if" >/dev/null 2>&1; then
+                    interface="$common_if"
+                    break
+                fi
+            done
+        fi
+        
+        # Method 4: Use any available interface
+        if [[ -z "$interface" ]]; then
+            interface=$(ls /sys/class/net/ | grep -v lo | head -1)
+        fi
+        
+        echo "$interface"
+    }
+    
+    # Function to get network traffic stats with better accuracy
+    get_network_traffic() {
+        local interface=$1
+        if [[ -z "$interface" ]]; then
+            interface=$(get_primary_interface)
+        fi
+        
+        # Try multiple methods to get traffic stats
+        local rx_bytes=0
+        local tx_bytes=0
+        
+        # Method 1: /proc/net/dev
+        if [[ -f "/proc/net/dev" ]]; then
+            local stats=$(grep "$interface" /proc/net/dev)
+            if [[ -n "$stats" ]]; then
+                rx_bytes=$(echo "$stats" | awk '{print $2}')
+                tx_bytes=$(echo "$stats" | awk '{print $10}')
+            fi
+        fi
+        
+        # Method 2: Use ip command if /proc/net/dev fails
+        if [[ "$rx_bytes" -eq 0 ]] && [[ "$tx_bytes" -eq 0 ]]; then
+            local ip_stats=$(ip -s link show "$interface" 2>/dev/null)
+            if [[ -n "$ip_stats" ]]; then
+                rx_bytes=$(echo "$ip_stats" | grep -A1 "RX:" | tail -1 | awk '{print $1}')
+                tx_bytes=$(echo "$ip_stats" | grep -A1 "TX:" | tail -1 | awk '{print $1}')
+            fi
+        fi
+        
+        echo "$rx_bytes $tx_bytes"
+    }
+    
+    # Function to get Danted service traffic with better detection
+    get_danted_traffic() {
+        local danted_pid=$(pgrep dante)
+        local connections=0
+        local traffic_info=""
+        
+        if [[ -n "$danted_pid" ]]; then
+            # Method 1: Count active connections
+            connections=$(ss -tuln 2>/dev/null | grep -E ":(1080|3333|4444|10808)" | wc -l)
+            
+            # Method 2: Get process network stats if available
+            if [[ -f "/proc/$danted_pid/net/dev" ]]; then
+                local proc_stats=$(cat "/proc/$danted_pid/net/dev" 2>/dev/null | grep "$(get_primary_interface)")
+                if [[ -n "$proc_stats" ]]; then
+                    local proc_rx=$(echo "$proc_stats" | awk '{print $2}')
+                    local proc_tx=$(echo "$proc_stats" | awk '{print $10}')
+                    traffic_info=" (RX: $(format_bytes $proc_rx), TX: $(format_bytes $proc_tx))"
+                fi
+            fi
+            
+            # Method 3: Use netstat if ss fails
+            if [[ $connections -eq 0 ]]; then
+                connections=$(netstat -tuln 2>/dev/null | grep -E ":(1080|3333|4444|10808)" | wc -l)
+            fi
+        fi
+        
+        echo "$connections$traffic_info"
+    }
+    
+    # Function to test ping latency with better timeout handling
+    test_ping_latency() {
+        local host=$1
+        local region=$2
+        
+        # Try multiple ping methods with better timeout handling
+        local ping_result=""
+        
+        # Method 1: Standard ping with longer timeout
+        ping_result=$(timeout 10 ping -c 2 -W 3 "$host" 2>/dev/null | grep "avg" | awk -F'/' '{print $5}')
+        
+        # Method 2: Use ping with different options if first fails
+        if [[ -z "$ping_result" ]] || [[ "$ping_result" == "timeout" ]]; then
+            ping_result=$(ping -c 1 -W 5 "$host" 2>/dev/null | grep "time=" | awk -F'time=' '{print $2}' | awk '{print $1}')
+        fi
+        
+        # Method 3: Use curl as fallback for connectivity test
+        if [[ -z "$ping_result" ]] || [[ "$ping_result" == "timeout" ]]; then
+            local curl_result=$(timeout 8 curl -s -w "%{time_total}" -o /dev/null "http://$host" 2>/dev/null)
+            if [[ "$curl_result" =~ ^[0-9]+\.?[0-9]*$ ]] && (( $(echo "$curl_result > 0" | bc -l 2>/dev/null || echo "0") )); then
+                ping_result=$(echo "scale=1; $curl_result * 1000" | bc -l 2>/dev/null || echo "0")
+            fi
+        fi
+        
+        if [[ -n "$ping_result" ]] && [[ "$ping_result" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+            echo "$ping_result"
+        else
+            echo "timeout"
+        fi
+    }
+    
+    # Display current network traffic with improved accuracy
+    echo -e "${CYAN}┌─ Current Network Traffic ────────────────────────────────────────────────────┐${NC}"
+    
+    local interface=$(get_primary_interface)
+    if [[ -n "$interface" ]]; then
+        print_color $CYAN "Network Interface: $interface"
+        
+        # Get initial stats
+        local initial_stats=$(get_network_traffic "$interface")
+        local initial_rx=$(echo "$initial_stats" | awk '{print $1}')
+        local initial_tx=$(echo "$initial_stats" | awk '{print $2}')
+        
+        print_color $YELLOW "Collecting traffic data for 10 seconds..."
+        sleep 10
+        
+        # Get final stats
+        local final_stats=$(get_network_traffic "$interface")
+        local final_rx=$(echo "$final_stats" | awk '{print $1}')
+        local final_tx=$(echo "$final_stats" | awk '{print $2}')
+        
+        # Calculate traffic difference
+        local rx_diff=$((final_rx - initial_rx))
+        local tx_diff=$((final_tx - initial_tx))
+        local rx_rate=$(echo "scale=2; $rx_diff / 10" | bc -l 2>/dev/null || echo "0")
+        local tx_rate=$(echo "scale=2; $tx_diff / 10" | bc -l 2>/dev/null || echo "0")
+        
+        printf "${CYAN}${NC} Download Rate:  ${GREEN}%s/s${NC}%*s${CYAN}${NC}\n" "$(format_bytes $rx_rate)" 50 ""
+        printf "${CYAN}${NC} Upload Rate:    ${GREEN}%s/s${NC}%*s${CYAN}${NC}\n" "$(format_bytes $tx_rate)" 50 ""
+        
+        # Get Danted service traffic
+        local danted_info=$(get_danted_traffic)
+        local danted_connections=$(echo "$danted_info" | cut -d'(' -f1)
+        local danted_traffic=$(echo "$danted_info" | grep -o '([^)]*)' | tr -d '()')
+        
+        printf "${CYAN}${NC} Danted Connections: ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$danted_connections" 50 ""
+        if [[ -n "$danted_traffic" ]]; then
+            printf "${CYAN}${NC} Danted Traffic:    ${GREEN}%s${NC}%*s${CYAN}${NC}\n" "$danted_traffic" 50 ""
+        fi
+        
+    else
+        print_error "Could not detect network interface"
+    fi
+    
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    
+    # Test ping latency to different regions with better hosts
+    echo
+    echo -e "${CYAN}┌─ Ping Latency Test ──────────────────────────────────────────────────────────┐${NC}"
+    
+    # Better host selection for regional testing
+    local ping_hosts=(
+        "SINGAPORE:sgp1.digitalocean.com"
+        "Vietnam:8.8.8.8"
+        "China:114.114.114.114"
+        "Tokyo:tokyo1.digitalocean.com"
+        "USA:nyc1.digitalocean.com"
+        "Sri Lanka:sgp1.digitalocean.com"
+        "Laos:8.8.8.8"
+    )
+    
+    # Alternative hosts for better reliability
+    local alt_hosts=(
+        "SINGAPORE:1.1.1.1"
+        "Vietnam:1.1.1.1"
+        "China:8.8.8.8"
+        "Tokyo:1.1.1.1"
+        "USA:8.8.8.8"
+        "Sri Lanka:1.1.1.1"
+        "Laos:1.1.1.1"
+    )
+    
+    # Test each region with fallback hosts
+    for i in "${!ping_hosts[@]}"; do
+        IFS=':' read -r region primary_host <<< "${ping_hosts[i]}"
+        IFS=':' read -r _ alt_host <<< "${alt_hosts[i]}"
+        
+        printf "${CYAN}${NC} %-12s: " "$region"
+        
+        # Try primary host first
+        local latency=$(test_ping_latency "$primary_host" "$region")
+        
+        # Try alternative host if primary fails
+        if [[ "$latency" == "timeout" ]]; then
+            latency=$(test_ping_latency "$alt_host" "$region")
+        fi
+        
+        if [[ "$latency" == "timeout" ]]; then
+            print_color $RED "timeout"
+        else
+            # Color code based on latency
+            local latency_color=$GREEN
+            if (( $(echo "$latency > 100" | bc -l 2>/dev/null || echo "0") )); then
+                latency_color=$RED
+            elif (( $(echo "$latency > 50" | bc -l 2>/dev/null || echo "0") )); then
+                latency_color=$YELLOW
+            fi
+            
+            printf "${latency_color}%.1f ms${NC}\n" "$latency"
+        fi
+    done
+    
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+    
+    # Multiple test servers for bandwidth testing
     local test_servers=(
         "http://speedtest.ftp.otenet.gr/files/test1Mb.db"
         "http://speedtest.ftp.otenet.gr/files/test10Mb.db"
@@ -935,16 +1326,6 @@ test_bandwidth() {
         "http://speedtest.london.linode.com/100MB-london.bin"
         "http://speedtest.dal05.softlayer.com/downloads/test10.zip"
     )
-    
-    # Function to format speed
-    format_speed() {
-        local speed=$1
-        if (( $(echo "$speed >= 1000" | bc -l 2>/dev/null || echo "0") )); then
-            echo "$(echo "scale=2; $speed / 1000" | bc -l 2>/dev/null || echo "0") Gbps"
-        else
-            echo "$(echo "scale=2; $speed" | bc -l 2>/dev/null || echo "0") Mbps"
-        fi
-    }
     
     # Function to test single server
     test_single_server() {
@@ -967,6 +1348,7 @@ test_bandwidth() {
     }
     
     # Test direct connection
+    echo
     print_color $YELLOW "Testing direct internet connection..."
     print_color $YELLOW "This may take a while... Please wait..."
     echo
@@ -1216,7 +1598,7 @@ install_danted() {
     
     # Update package list
     echo -e "${GRAY}Updating package list...${NC}"
-    apt update -qq
+    apt update -qq 2>/dev/null
     
     # Install Danted
     echo -e "${GRAY}Installing dante-server...${NC}"
