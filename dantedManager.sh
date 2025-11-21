@@ -1712,32 +1712,31 @@ show_users() {
 create_user_config() {
     local username=$1
     local password=$2
-    
+
     # Ensure config directory exists
     if [[ ! -d "$CONFIG_DIR" ]]; then
-        mkdir -p "$CONFIG_DIR"
-        if [[ $? -ne 0 ]]; then
+        mkdir -p "$CONFIG_DIR" || {
             print_error "Failed to create config directory: $CONFIG_DIR"
             return 1
-        fi
+        }
     fi
-    
-    if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
-        # Try to get from existing config
-        if [[ -f "$DANTED_CONFIG" ]]; then
-            internal_line=$(grep -E "^[[:space:]]*internal:" "$DANTED_CONFIG" | head -1)
-            if [ -n "$internal_line" ]; then
-                SELECTED_IP=$(echo "$internal_line" | sed -n 's/.*internal:[[:space:]]*\([^[:space:]]*\).*/\1/p' | sed 's/port=.*//')
-                SELECTED_PORT=$(echo "$internal_line" | sed -n 's/.*port[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p')
-            fi
-        fi
+
+    # Detect public IP
+    local PUBLIC_IP
+    PUBLIC_IP=$(curl -s ifconfig.me || wget -qO- ifconfig.me)
+    if [[ -z "$PUBLIC_IP" ]]; then
+        PUBLIC_IP="127.0.0.1"
     fi
-    
-    if [[ -z "$SELECTED_IP" || -z "$SELECTED_PORT" ]]; then
+
+    # Detect port from config
+    if [[ -z "$SELECTED_PORT" && -f "$DANTED_CONFIG" ]]; then
+        SELECTED_PORT=$(grep -Eo "port[[:space:]]*=[[:space:]]*[0-9]+" "$DANTED_CONFIG" | head -1 | grep -Eo "[0-9]+")
+    fi
+
+    if [[ -z "$PUBLIC_IP" || -z "$SELECTED_PORT" ]]; then
         print_error "Server IP and port not configured. Please install Danted first."
         return 1
     fi
-    
     # Create config content
     cat > "$CONFIG_DIR/$username" << EOF
 {
@@ -1801,7 +1800,7 @@ create_user_config() {
       "settings": {
         "servers": [
           {
-            "address": "$SELECTED_IP",
+            "address": "$PUBLIC_IP",
             "ota": false,
             "port": $SELECTED_PORT,
             "level": 1,
