@@ -1712,6 +1712,7 @@ show_users() {
 create_user_config() {
     local username=$1
     local password=$2
+    local config_file="$CONFIG_DIR/${username}.json"
 
     # Ensure config directory exists
     if [[ ! -d "$CONFIG_DIR" ]]; then
@@ -1738,7 +1739,7 @@ create_user_config() {
         return 1
     fi
     # Create config content
-    cat > "$CONFIG_DIR/$username" << EOF
+    cat > "$config_file" << EOF
 {
   "log": {
     "loglevel": "warning"
@@ -2313,7 +2314,7 @@ delete_users() {
     for user in "${to_delete[@]}"; do
         if userdel "$user" 2>/dev/null; then
             # Remove config file
-            rm -f "$CONFIG_DIR/$user"
+            rm -f "$CONFIG_DIR/$user" "$CONFIG_DIR/${user}.json"
             print_success "Deleted user: $user"
             ((deleted_count++))
         else
